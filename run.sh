@@ -1,0 +1,1 @@
+python main_putnam.py --benchmarks-dir data/test/lean4 --file putnam_1962_a1.lean

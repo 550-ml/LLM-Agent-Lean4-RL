@@ -1,0 +1,49 @@
+# 默认配置文件
+# 所有配置都在这里，尽量通过修改这个文件来调整参数，而不是命令行参数
+
+# 数据配置
+data:
+  benchmarks_dir: "data/benchmarks/lean4"  # PutnamBench 数据目录
+  # benchmarks_dir: "data/test/lean4"     # 测试数据目录
+
+# LLM 配置
+llm:
+  planning:
+    model: "o3-mini"  # 规划智能体使用的模型
+    temperature: 0.7
+    max_tokens: 2048
+    top_p: 1.0
+    frequency_penalty: 0.0
+    presence_penalty: 0.0
+    max_retries: 3
+    retry_delay: 1.0
+    timeout: 60
+  
+  generation:
+    model: "gpt-4o"  # 生成智能体使用的模型
+    temperature: 0.7
+    max_tokens: 2048
+    top_p: 1.0
+    frequency_penalty: 0.0
+    presence_penalty: 0.0
+    max_retries: 3
+    retry_delay: 1.0
+    timeout: 60
+
+# Agent 配置
+agent:
+  max_retries: 5  # Agent 最大重试次数（验证失败后重新生成）
+  timeout: 300  # Agent 超时时间（秒）
+
+# 验证器配置
+verifier:
+  lean_version: "4.24.0"
+  project_path: "./lean_playground"
+  timeout: 60
+
+# RL 配置（未来）
+rl:
+  enabled: false
+  algorithm: "ppo"
+  learning_rate: 0.0001
+
