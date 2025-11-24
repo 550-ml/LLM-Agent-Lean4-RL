@@ -244,3 +244,17 @@ class OpenAIClient(BaseLLM):
             logger.warning(
                 f"Error counting tokens: {e}, using character count")
             return len(text) // 4
+
+
+if __name__ == "__main__":
+    config = LLMConfig(
+        model_name="gpt-4o",
+        temperature=0.7,
+        max_tokens=2048,
+        max_retries=3,
+        base_url="https://api.chatanywhere.tech"
+    )
+    client = OpenAIClient(config)
+    messages = [{"role": "user", "content": "Hello, how are you?"}]
+    response = client.generate(messages)
+    print(response)

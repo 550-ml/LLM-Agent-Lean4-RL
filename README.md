@@ -1,15 +1,19 @@
 
 示例:
-  # 列出所有问题
-  python main_putnam.py --list
-  
-  # 处理单个问题（使用默认配置）
-  python main_putnam.py --file putnam_1962_a1.lean
-  
-  # 使用自定义配置文件
-  python main_putnam.py --file putnam_1962_a1.lean --config config/custom.yaml
-  
-注意: 大部分配置都在 config/default.yaml 中，建议修改配置文件而不是使用命令行参数。
+# 处理指定文件夹下的所有 .lean 文件（相对路径）
+python main.py path/to/folder
+
+# 处理指定文件夹下的所有 .lean 文件（绝对路径）
+python main.py /absolute/path/to/folder
+
+# 处理所有文件（快捷方式）
+python main.py --all
+
+# 列出所有可用文件
+python main.py --list
+
+# 静默模式（批量处理时不显示详细信息）
+python main.py path/to/folder --quiet
         """
 # LLM-Agent-Lean4-RL
 

@@ -6,7 +6,7 @@ PutnamBench 主入口文件
 from src.utils.putnam_loader import PutnamLoader
 from src.agent.coordinator import AgentCoordinator
 from src.utils.config_manager import ConfigManager
-from typing import Dict, Tuple, Optional
+from typing import Dict, Optional, List
 import argparse
 
 import os
@@ -39,7 +39,7 @@ def main_workflow_putnam(
 
         # 使用自定义配置
         result = main_workflow_putnam(
-            description, 
+            description,
             template,
             config={"planning_model": "o3-mini", "generation_model": "gpt-4o"}
         )
@@ -63,20 +63,154 @@ def main_workflow_putnam(
     return result
 
 
+def process_single_file(
+    filename: str,
+    loader: PutnamLoader,
+    config_manager: ConfigManager,
+    config_file: str,
+    verbose: bool = True
+) -> Optional[Dict[str, str]]:
+    """
+    处理单个文件
+
+    Args:
+        filename: 文件名
+        loader: PutnamLoader 实例
+        config_manager: ConfigManager 实例
+        config_file: 配置文件路径
+        verbose: 是否显示详细信息
+
+    Returns:
+        处理结果字典，如果失败返回 None
+    """
+    if verbose:
+        print(f"\n{'='*60}")
+        print(f"📖 处理文件: {filename}")
+        print(f"{'='*60}")
+
+    # 加载问题
+    try:
+        problem = loader.load_file(filename)
+        if verbose:
+            print(f"   定理名称: {problem.theorem_name}")
+            print(f"   问题描述: {problem.docstring[:100]}..." if len(
+                problem.docstring) > 100 else f"   问题描述: {problem.docstring}")
+    except Exception as e:
+        print(f"❌ 加载失败 [{filename}]: {e}")
+        return None
+
+    # 转换为任务格式
+    if verbose:
+        print("\n🔄 转换为任务格式...")
+    problem_description, task_template = loader.convert_to_task_format(problem)
+
+    # 从配置文件获取配置信息
+    planning_model = config_manager.get("llm.planning.model", "o3-mini")
+    generation_model = config_manager.get("llm.generation.model", "gpt-4o")
+    max_retries = config_manager.get_max_retries()
+
+    # 执行主工作流程
+    if verbose:
+        print("\n🚀 开始执行主工作流程...")
+        print(f"   规划模型: {planning_model}")
+        print(f"   生成模型: {generation_model}")
+        print(f"   最大重试: {max_retries}")
+
+    try:
+        result = main_workflow_putnam(
+            problem_description,
+            task_template,
+            config=None,
+            config_file=config_file
+        )
+
+        if verbose:
+            # 输出结果
+            print("\n" + "="*60)
+            print("✅ 完成！生成的证明：")
+            print("="*60)
+            print("\n[证明]")
+            print(result.get("proof", result.get("code", "")))
+            print("="*60)
+
+            # 生成完整的定理（替换 sorry）
+            full_theorem = problem.theorem_statement.replace(
+                'sorry',
+                result.get("proof", result.get("code", "sorry"))
+            )
+            print("\n[完整定理]")
+            print(full_theorem)
+            print("="*60)
+
+        return {
+            "filename": filename,
+            "theorem_name": problem.theorem_name,
+            "proof": result.get("proof", result.get("code", "")),
+            "full_theorem": problem.theorem_statement.replace(
+                'sorry',
+                result.get("proof", result.get("code", "sorry"))
+            ),
+            "success": True
+        }
+
+    except Exception as e:
+        print(f"\n❌ 处理失败 [{filename}]: {e}")
+        if verbose:
+            import traceback
+            traceback.print_exc()
+        return {
+            "filename": filename,
+            "theorem_name": problem.theorem_name if 'problem' in locals() else "unknown",
+            "success": False,
+            "error": str(e)
+        }
+
+
+def get_files_from_dir(
+    dir_path: str,
+) -> List[str]:
+    """从指定目录递归获取所有 .lean 文件
+
+    Args:
+        dir_path: 目录路径（绝对路径或相对路径，直接使用用户提供的路径）
+
+    Returns:
+        List[str]: 文件的绝对路径列表
+    """
+    # 如果是相对路径，转换为绝对路径（相对于当前工作目录）
+    if os.path.isabs(dir_path):
+        target_dir = dir_path
+    else:
+        target_dir = os.path.abspath(dir_path)
+
+    if not os.path.exists(target_dir):
+        raise FileNotFoundError(f"目录不存在: {target_dir}")
+
+    if not os.path.isdir(target_dir):
+        raise ValueError(f"路径不是目录: {target_dir}")
+
+    # 递归查找所有 .lean 文件，返回绝对路径
+    files_to_process = []
+    for root, dirs, files in os.walk(target_dir):
+        for file in files:
+            if file.endswith('.lean'):
+                # 使用绝对路径
+                abs_path = os.path.abspath(os.path.join(root, file))
+                files_to_process.append(abs_path)
+
+    return sorted(files_to_process)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="LLM-Agent-Lean4-RL: 自动生成和验证 Lean4 形式化证明（PutnamBench 格式）",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
-        "--file",
+        "--dir",
         type=str,
-        help="要处理的问题文件（如 putnam_1962_a1.lean）"
-    )
-    parser.add_argument(
-        "--list",
-        action="store_true",
-        help="列出所有可用的问题文件"
+        default='./data/test/lean4/src/',
+        help="要处理的文件夹路径"
     )
     parser.add_argument(
         "--config",
@@ -85,89 +219,25 @@ def main():
         help="配置文件路径（默认: config/default.yaml）"
     )
 
+    # 参数加载
     args = parser.parse_args()
-
     config_manager = ConfigManager(args.config)
     print(f"✅ 加载配置文件: {args.config}")
-
     benchmarks_dir = config_manager.get_benchmarks_dir()
     loader = PutnamLoader(benchmarks_dir)
 
-    if args.list:
-        files = loader.list_all_problems()
-        print(f"找到 {len(files)} 个问题文件：")
-        for f in files[:20]:  # 只显示前20个
-            print(f"  - {f}")
-        if len(files) > 20:
-            print(f"  ... 还有 {len(files) - 20} 个文件")
-        return
+    # 获取要处理的文件列表
+    files_to_process = get_files_from_dir(args.dir)
 
-    if not args.file:
-        print("❌ 错误: 请指定 --file 参数或使用 --list 查看可用文件")
-        parser.print_help()
-        return
-
-    # 加载问题
-    print(f"📖 加载问题: {args.file}")
-    try:
-        problem = loader.load_file(args.file)
-        print(f"   定理名称: {problem.theorem_name}")
-        print(f"   问题描述: {problem.docstring}")
-        print(f"   定理语句: {problem.theorem_statement}")
-        print(f"   导入语句: {problem.imports}")
-        print(f"   打开语句: {problem.opens}")
-    except Exception as e:
-        print(f"❌ 加载失败: {e}")
-        return
-
-    # 转换为任务格式
-    print("\n🔄 转换为任务格式...")
-    problem_description, task_template = loader.convert_to_task_format(problem)
-    print(f"   问题描述: {problem_description[:200]}...")  # 只显示前200字符
-    print(f"   任务模板: {task_template[:200]}...")  # 只显示前200字符
-
-    # 从配置文件获取配置信息
-    planning_model = config_manager.get("llm.planning.model", "o3-mini")
-    generation_model = config_manager.get("llm.generation.model", "gpt-4o")
-    max_retries = config_manager.get_max_retries()
-
-    # 执行主工作流程（使用配置文件）
-    print("\n🚀 开始执行主工作流程...\n")
-    print(f"   配置文件: {args.config}")
-    print(f"   规划模型: {planning_model}")
-    print(f"   生成模型: {generation_model}")
-    print(f"   最大重试: {max_retries}")
-    print()
-
-    try:
-        result = main_workflow_putnam(
-            problem_description,
-            task_template,
-            config=None,  # 不传 config，让函数从配置文件加载
-            config_file=args.config
+    # 批量处理文件
+    for filename in files_to_process:
+        result = process_single_file(
+            filename,
+            loader,
+            config_manager,
+            args.config
         )
-
-        # 输出结果
-        print("\n" + "="*60)
-        print("✅ 完成！生成的证明：")
-        print("="*60)
-        print("\n[证明]")
-        print(result.get("proof", result.get("code", "")))
-        print("="*60)
-
-        # 生成完整的定理（替换 sorry）
-        full_theorem = problem.theorem_statement.replace(
-            'sorry',
-            result.get("proof", result.get("code", "sorry"))
-        )
-        print("\n[完整定理]")
-        print(full_theorem)
-        print("="*60)
-
-    except Exception as e:
-        print(f"\n❌ 错误: {e}")
-        import traceback
-        traceback.print_exc()
+        print(result)
 
 
 if __name__ == "__main__":

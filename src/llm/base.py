@@ -22,7 +22,7 @@ class LLMConfig:
     frequency_penalty: float = 0.0
     presence_penalty: float = 0.0
     api_key: Optional[str] = None
-    base_url: Optional[str] = None
+    base_url: Optional[str] = "https://api.chatanywhere.tech"
     timeout: int = 60
     max_retries: int = 3  # 最大重试次数
     retry_delay: float = 1.0  # 重试延迟（秒）
