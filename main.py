@@ -55,9 +55,6 @@ def main_workflow_putnam(
     coordinator = AgentCoordinator.from_config(
         config=config, config_file=config_file)
 
-    # 解决问题（从配置文件读取 max_retries）
-    # 注意：这里需要从配置文件中读取 max_retries，但为了保持接口简洁，
-    # 我们可以在 coordinator.solve() 中从 config 读取，或者在这里传递
     result = coordinator.solve(problem_description, task_template)
 
     return result

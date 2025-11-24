@@ -1,3 +1,9 @@
+# Lean4环境安装
+- benckmark提供了lean4的环境，只需要吧
+- cd data/benchmarks/lean4
+- lake lean src/test.lean
+- 这两行代码就可以
+
 
 示例:
 # 处理指定文件夹下的所有 .lean 文件（相对路径）
