@@ -346,22 +346,44 @@ def execute_lean_code(code: str, project_path: str = "/home/wangtuo/WorkSpace/le
         str: 执行结果或错误信息
     """
     runner = Lean4Runner(project_path=project_path)
+    print(f"执行 Lean4 代码: {project_path}")
     result = runner.execute(code)
+
     return result.output
 
 
 if __name__ == "__main__":
     code = """
     import Mathlib
+open MeasureTheory
 
-    /--
-    这是一个简单的测试定理：
-    对任意自然数 a b，a + b = b + a。
-    -/
-    theorem my_add_comm (a b : Nat) : a + b = b + a := by
-    -- 直接用库里的现成引理 Nat.add_comm
-    exact Nat.add_comm a b
+theorem putnam_1962_a1
+(S : Set (ℝ × ℝ))
+(hS : S.ncard = 5)
+(hnoncol : ∀ s ⊆ S, s.ncard = 3 → ¬Collinear ℝ s)
+: ∃ T ⊆ S, T.ncard = 4 ∧ ¬∃ t ∈ T, t ∈ convexHull ℝ (T \ {t}) :=
+-- << PROOF START >>
+by
+  classical
+  -- Assume the contrary: that no four points form a convex quadrilateral.
+  contrapose! hnoncol
+  -- Consider all subsets of four points: there are `5 choose 4` = 5 such subsets.
+  obtain ⟨p₁, hp₁⟩ : ∃ p ∈ S, p ∉ convexHull ℝ (S \ {p}) :=
+    by simp only [Set.ncard_eq_finite, hS, ← Finset.card_univ, Finset.card_univ, Finset.card_eq_finite, Finset.card_pos] at hS;
+       obtain ⟨p₁, p₂, p₃, p₄, p₅, h_distinct, h_subset⟩ := Finset.exists_distinct_subset_card_eq 5 (Set.to_finset S);
+       rcases Finset.exists_subset_card_eq 4 h_distinct with ⟨T, hT, h_cardT⟩;
+       simp only [Finset.card_univ, Finset.card_eq_finite, Finset.card_pos, Set.to_finset_card_eq] at h_cardT;
+       exact ⟨p₁, Set.mem_to_finset.mpr (h_subset (Finset.mem_univ _)), by simpa⟩
+  -- p1 is one such point that is not in the convex hull of the other four points.
+  use S \ {p₁}
+  -- Prove that this set is a subset of S, has cardinality 4, and forms a convex quadrilateral.
+  refine ⟨Set.diff_subset _ _, by simp only [Set.ncard_eq_finite, Set.to_finset_card_eq, Finset.card_univ, Finset.card_eq_finite]; exact hS.pred, _⟩
+  -- Show that removing p1 from S leaves a set with points forming a convex quadrilateral.
+  intro h
+  -- If p1 were in the convex hull of the other four, it would contradict our assumption.
+  exact hp₁ (Set.mem_convexHull.mpr ⟨S \ {p₁}, Set.diff_subset _ _, by simp only [Set.ncard_eq_finite, Set.to_finset_card_eq, Finset.card_univ, Finset.card_eq_finite]; exact hS.pred, h⟩)
+-- << PROOF END >>
     """
-    print(code)
+    # print(code)
     result = execute_lean_code(code)
     print(result)

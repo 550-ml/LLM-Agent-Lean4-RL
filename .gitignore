@@ -54,3 +54,7 @@ htmlcov/
 .DS_Store
 *.bak
 **/.lake/
+
+# 临时
+log/
+**/temp/

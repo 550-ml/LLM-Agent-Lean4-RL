@@ -1,74 +1,67 @@
-"""
-验证智能体：验证 Lean4 代码的正确性
-参考 Lean4-LLM-Ai-Agent-Mooc 的 main.py 中的验证部分
-"""
-
-from typing import Dict, Any
 from .base import BaseAgent, AgentState
-from ..verifier.lean4_runner import Lean4Runner
+from ..verifier import lean4_runner
+from ..llm import BaseLLM
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class VerificationAgent(BaseAgent):
     """
     验证智能体
-    
-    负责：
-    1. 执行 Lean4 代码验证
-    2. 分析错误信息
-    3. 提供修复建议
+
+    功能：
+    1. 将 {{proof}} 替换为模型生成的 Lean4 证明
+    2. 调用 Lean4 Runner 进行编译验证
+    3. 返回 success / error / lean_output
     """
-    
-    def __init__(self, lean_runner: Lean4Runner, llm=None):
-        """
-        初始化验证智能体
-        
-        Args:
-            lean_runner: Lean4 执行器
-            llm: LLM 实例（可选，验证智能体主要使用 lean_runner）
-        """
-        # 验证智能体主要使用 lean_runner，但为了保持接口一致性，需要一个 LLM
-        # 如果未提供，创建一个虚拟的
-        if llm is None:
-            from ..llm.base import BaseLLM, LLMConfig
-            # 创建一个简单的虚拟 LLM
-            class DummyLLM(BaseLLM):
-                def generate(self, messages, **kwargs):
-                    return None
-                def stream_generate(self, messages, **kwargs):
-                    yield ""
-            llm = DummyLLM(LLMConfig(model_name="dummy"))
-        
+
+    def __init__(self, lean_runner: lean4_runner, llm: BaseLLM):
         super().__init__(llm, "VerificationAgent")
         self.lean_runner = lean_runner
-    
-    def execute(self, state: AgentState) -> Dict[str, Any]:
-        """
-        执行验证任务
-        
-        Args:
-            state: 当前状态
-        
-        Returns:
-            Dict[str, Any]: 包含 "success" 和 "error" 键的字典
-        """
-        # 将代码和证明插入模板
-        full_code = state.task_template.replace("{{code}}", state.current_code).replace("{{proof}}", state.current_proof)
-        
-        # 执行验证
-        result = self.lean_runner.execute(full_code)
-        
-        if result.success:
-            return {
-                "success": True,
-                "output": result.output,
-                "error": None
-            }
-        else:
-            # 提取错误信息
-            error_msg = result.error_message or result.output
+
+    def execute(self, state: AgentState) -> dict:
+        """执行 Lean4 验证"""
+
+        # === 1. 将 proof 替换进去 ===
+        if "{proof}" not in state.task_template:
+            logger.error("❌ 模板中缺少 {proof} 占位符！")
+            error_msg = "Template missing {{proof}} placeholder"
+            if hasattr(state, "error_history"):
+                state.error_history.append(error_msg)
             return {
                 "success": False,
-                "output": result.output,
-                "error": error_msg
+                "error": error_msg,
+                "output": None,
             }
 
+        full_code = state.task_template.replace(
+            "{proof}", state.current_proof)
+        logger.info(f"最后验证完整代码: {full_code}")
+        # === 2. 运行 Lean ===
+        result = self.lean_runner.execute(full_code)
+
+        # === 3. 格式化输出 ===
+        success = getattr(result, "success", False)
+        output = getattr(result, "output", "")
+        error = getattr(result, "error", "")
+
+        if success:
+            return {
+                "success": True,
+                "output": output,
+            }
+
+        normalized_error = error or "Unknown Lean4 error"
+
+        # 将 Lean 错误信息和本次尝试的 proof 一并记录，便于生成阶段诊断
+        if hasattr(state, "error_history"):
+            state.error_history.append(
+                f"Lean error: {normalized_error}\nProof attempt:\n{state.current_proof}"
+            )
+
+        return {
+            "success": False,
+            "error": normalized_error,
+            "output": output,
+        }

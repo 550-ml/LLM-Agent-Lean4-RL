@@ -4,7 +4,10 @@
 
 import os
 import yaml
+from datetime import datetime
 from typing import Dict, Optional, Any
+from src.logger import setup_logging
+import logging
 
 
 class ConfigManager:
@@ -83,3 +86,16 @@ class ConfigManager:
     def get_max_retries(self) -> int:
         """获取最大重试次数"""
         return self.get_agent_config().get("max_retries", 5)
+
+    def init_logger(self):
+        """
+        根据时间创建一个文件夹，并返回文件夹路径
+        """
+
+        log_dir = self.get("logger.save_dir")
+        log_config = self.get("logger.log_config")
+        save_dir = datetime.now().strftime(f"{log_dir}/%Y%m%d_%H%M%S")
+        os.makedirs(save_dir, exist_ok=True)
+        setup_logging(sva_dir=save_dir, log_config=log_config)
+        logger = logging.getLogger(__name__)
+        return logger

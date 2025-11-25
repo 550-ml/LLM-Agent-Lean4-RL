@@ -9,7 +9,7 @@ data:
 # LLM 配置
 llm:
   planning:
-    model: "o3-mini"  # 规划智能体使用的模型
+    model: "gpt-4o-mini"  # 规划智能体使用的模型
     temperature: 0.7
     max_tokens: 2048
     top_p: 1.0
@@ -18,9 +18,10 @@ llm:
     max_retries: 3
     retry_delay: 1.0
     timeout: 60
+    base_url: "https://api.chatanywhere.tech"
   
   generation:
-    model: "gpt-4o"  # 生成智能体使用的模型
+    model: "gpt-4o-mini"  # 生成智能体使用的模型
     temperature: 0.7
     max_tokens: 2048
     top_p: 1.0
@@ -29,7 +30,19 @@ llm:
     max_retries: 3
     retry_delay: 1.0
     timeout: 60
+    base_url: "https://api.chatanywhere.tech"
 
+  verification:
+    model: "gpt-4o-mini"  # 验证智能体使用的模型
+    temperature: 0.7
+    max_tokens: 2048
+    top_p: 1.0
+    frequency_penalty: 0.0
+    presence_penalty: 0.0
+    max_retries: 3
+    retry_delay: 1.0
+    timeout: 60
+    base_url: "https://api.chatanywhere.tech"
 # Agent 配置
 agent:
   max_retries: 5  # Agent 最大重试次数（验证失败后重新生成）
@@ -37,8 +50,7 @@ agent:
 
 # 验证器配置
 verifier:
-  lean_version: "4.24.0"
-  project_path: "./lean_playground"
+  project_path: "/home/wangtuo/WorkSpace/lean/LLM-Agent-Lean4-RL/data/benchmarks/lean4"  # 这个地方给绝对路径
   timeout: 60
 
 # RL 配置（未来）
@@ -46,4 +58,9 @@ rl:
   enabled: false
   algorithm: "ppo"
   learning_rate: 0.0001
+
+# 日志配置
+logger:
+  save_dir: "log"
+  log_config: "src/logger/logger_config.json"
 

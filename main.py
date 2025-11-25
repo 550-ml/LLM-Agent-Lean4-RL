@@ -2,7 +2,7 @@
 PutnamBench 主入口文件
 适配 PutnamBench 数据格式
 """
-
+from src.logger import setup_logging
 from src.utils.putnam_loader import PutnamLoader
 from src.agent.coordinator import AgentCoordinator
 from src.utils.config_manager import ConfigManager
@@ -18,8 +18,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 def main_workflow_putnam(
     problem_description: str,
     task_template: str,
-    config: Optional[Dict] = None,
-    config_file: Optional[str] = None
+    config_manager: Optional[ConfigManager] = None,
+    config: Optional[Dict] = None
 ) -> Dict[str, str]:
     """
     主工作流程（Putnam 格式）
@@ -27,33 +27,17 @@ def main_workflow_putnam(
     Args:
         problem_description: 问题描述
         task_template: 任务模板
-        config: 配置字典（可选，会覆盖配置文件）
-        config_file: 配置文件路径（可选，默认: "config/default.yaml"）
+        config_manager: ConfigManager 实例（如果为 None，会使用默认配置）
+        config: 可选的配置字典，用于覆盖配置
 
     Returns:
         Dict[str, str]: 包含 "code" 和 "proof" 的字典
-
-    Example:
-        # 使用默认配置
-        result = main_workflow_putnam(description, template)
-
-        # 使用自定义配置
-        result = main_workflow_putnam(
-            description,
-            template,
-            config={"planning_model": "o3-mini", "generation_model": "gpt-4o"}
-        )
-
-        # 使用指定配置文件
-        result = main_workflow_putnam(
-            description,
-            template,
-            config_file="config/custom.yaml"
-        )
     """
-    # 创建协调器（支持传入配置）
+    # 创建协调器（统一使用 ConfigManager）
     coordinator = AgentCoordinator.from_config(
-        config=config, config_file=config_file)
+        config_manager=config_manager,
+        config=config
+    )
 
     result = coordinator.solve(problem_description, task_template)
 
@@ -64,7 +48,36 @@ def process_single_file(
     filename: str,
     loader: PutnamLoader,
     config_manager: ConfigManager,
-    config_file: str,
+):
+    """处理单个文件
+
+    Args:
+        filename (str): 文件名
+        loader (PutnamLoader): PutnamLoader 实例
+        config_manager (ConfigManager): ConfigManager 实例
+    """
+    # 1. 题目加载
+    problem = loader.load_file(filename)
+    problem_description, task_template = loader.convert_to_task_format(problem)
+    logger.info(f"Problem Description: {problem_description}")
+    logger.info(f"Task Template: {task_template}")
+    # 2. Agent流程, 这里可以自定义
+    try:
+        result = main_workflow_putnam(
+            problem_description,
+            task_template,
+            config_manager=config_manager
+        )
+    except Exception as e:
+        logger.error(f"处理失败: {e}")
+        return None
+    return result
+
+
+def process_single_file2(
+    filename: str,
+    loader: PutnamLoader,
+    config_manager: ConfigManager,
     verbose: bool = True
 ) -> Optional[Dict[str, str]]:
     """
@@ -74,7 +87,6 @@ def process_single_file(
         filename: 文件名
         loader: PutnamLoader 实例
         config_manager: ConfigManager 实例
-        config_file: 配置文件路径
         verbose: 是否显示详细信息
 
     Returns:
@@ -101,7 +113,7 @@ def process_single_file(
         print("\n🔄 转换为任务格式...")
     problem_description, task_template = loader.convert_to_task_format(problem)
 
-    # 从配置文件获取配置信息
+    # 从配置文件获取配置信息（用于显示）
     planning_model = config_manager.get("llm.planning.model", "o3-mini")
     generation_model = config_manager.get("llm.generation.model", "gpt-4o")
     max_retries = config_manager.get_max_retries()
@@ -117,8 +129,7 @@ def process_single_file(
         result = main_workflow_putnam(
             problem_description,
             task_template,
-            config=None,
-            config_file=config_file
+            config_manager=config_manager
         )
 
         if verbose:
@@ -199,6 +210,18 @@ def get_files_from_dir(
 
 
 def main():
+    # 1. 处理每个文件
+    for filename in files_to_process:
+        result = process_single_file(
+            filename,
+            loader,
+            config_manager
+        )
+        break
+
+
+if __name__ == "__main__":
+    # 1. 参数解析
     parser = argparse.ArgumentParser(
         description="LLM-Agent-Lean4-RL: 自动生成和验证 Lean4 形式化证明（PutnamBench 格式）",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -206,7 +229,7 @@ def main():
     parser.add_argument(
         "--dir",
         type=str,
-        default='./data/test/lean4/src/',
+        default='./data/benchmarks/lean4/test',
         help="要处理的文件夹路径"
     )
     parser.add_argument(
@@ -215,27 +238,15 @@ def main():
         default="config/default.yaml",
         help="配置文件路径（默认: config/default.yaml）"
     )
-
-    # 参数加载
     args = parser.parse_args()
     config_manager = ConfigManager(args.config)
-    print(f"✅ 加载配置文件: {args.config}")
+    logger = config_manager.init_logger()
+    logger.info(f"✅ 加载配置文件: {args.config}")
+
+    # 2. 数据加载
     benchmarks_dir = config_manager.get_benchmarks_dir()
     loader = PutnamLoader(benchmarks_dir)
-
-    # 获取要处理的文件列表
     files_to_process = get_files_from_dir(args.dir)
 
-    # 批量处理文件
-    for filename in files_to_process:
-        result = process_single_file(
-            filename,
-            loader,
-            config_manager,
-            args.config
-        )
-        print(result)
-
-
-if __name__ == "__main__":
+    # 3. 主流程
     main()
