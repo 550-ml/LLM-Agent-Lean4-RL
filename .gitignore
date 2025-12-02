@@ -1,3 +1,5 @@
+config/api_key.env
+data/retriever/*
 # Python
 __pycache__/
 *.py[cod]

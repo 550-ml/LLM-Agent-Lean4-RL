@@ -3,11 +3,25 @@
 
 # 数据配置
 data:
-  benchmarks_dir: "data/benchmarks/lean4"  # PutnamBench 数据目录
-  # benchmarks_dir: "data/test/lean4"     # 测试数据目录
+  project_dir: "data/benchmarks/lean4"  # 项目目录
+  data_dir: "data/benchmarks/lean4/test"
 
+prompt_loader:
+  prompts_dir: "data/prompts"
 # LLM 配置
 llm:
+  reasoner:
+    model_name: "gpt-4o-mini"  # 检索智能体使用的模型
+    temperature: 0.7
+    max_tokens: 2048
+    top_p: 1.0
+    frequency_penalty: 0.0
+    presence_penalty: 0.0
+    max_retries: 3
+    retry_delay: 1.0
+    base_url: "https://api.chatanywhere.tech"
+
+    
   planning:
     model: "gpt-4o-mini"  # 规划智能体使用的模型
     temperature: 0.7
@@ -43,10 +57,12 @@ llm:
     retry_delay: 1.0
     timeout: 60
     base_url: "https://api.chatanywhere.tech"
+
 # Agent 配置
 agent:
-  max_retries: 5  # Agent 最大重试次数（验证失败后重新生成）
-  timeout: 300  # Agent 超时时间（秒）
+  retriever:
+    index_dir: "data/retriever"
+    model_name: "all-mpnet-base-v2"
 
 # 验证器配置
 verifier:

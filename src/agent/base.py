@@ -1,13 +1,14 @@
-from abc import ABC, abstractmethod
-from typing import Dict, Any, List
+from abc import ABC
 from dataclasses import dataclass, field
+from typing import Any, Dict, List
+
 from ..llm.base import BaseLLM
 
 
 @dataclass
 class AgentState:
-    """Agent State
-    """
+    """Agent State"""
+
     problem_description: str
     task_template: str
     current_proof: str = ""
@@ -22,7 +23,6 @@ class BaseAgent(ABC):
         self.llm = llm
         self.name = name
 
-    @abstractmethod  # 子类实现的抽象方法
     def execute(self, state: AgentState) -> Dict[str, Any]:
         pass
 

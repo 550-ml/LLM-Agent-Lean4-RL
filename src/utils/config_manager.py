@@ -2,12 +2,14 @@
 配置管理器：统一管理所有配置
 """
 
-import os
-import yaml
-from datetime import datetime
-from typing import Dict, Optional, Any
-from src.logger import setup_logging
 import logging
+import os
+from datetime import datetime
+from typing import Any, Dict
+
+import yaml
+
+from src.logger import setup_logging
 
 
 class ConfigManager:
@@ -28,7 +30,7 @@ class ConfigManager:
         if not os.path.exists(self.config_file):
             raise FileNotFoundError(f"配置文件不存在: {self.config_file}")
 
-        with open(self.config_file, 'r', encoding='utf-8') as f:
+        with open(self.config_file, "r", encoding="utf-8") as f:
             config = yaml.safe_load(f)
 
         return config or {}
@@ -44,7 +46,7 @@ class ConfigManager:
         Returns:
             配置值
         """
-        keys = key_path.split('.')
+        keys = key_path.split(".")
         value = self.config
 
         for key in keys:
@@ -58,6 +60,14 @@ class ConfigManager:
     def get_data_config(self) -> Dict[str, Any]:
         """获取数据配置"""
         return self.config.get("data", {})
+
+    def get_prompt_loader_config(self) -> Dict[str, Any]:
+        """获取 prompt 加载器配置"""
+        return self.config.get("prompt_loader", {})
+
+    def get_retriever_config(self) -> Dict[str, Any]:
+        """获取 retriever 配置"""
+        return self.config.get("retriever", {})
 
     def get_llm_config(self, agent_type: str = "planning") -> Dict[str, Any]:
         """
@@ -79,9 +89,13 @@ class ConfigManager:
         """获取验证器配置"""
         return self.config.get("verifier", {})
 
-    def get_benchmarks_dir(self) -> str:
+    def get_project_dir(self) -> str:
         """获取基准数据目录"""
-        return self.get_data_config().get("benchmarks_dir", "data/benchmarks/lean4")
+        return self.get_data_config().get("project_dir", "data/benchmarks/lean4")
+
+    def get_data_dir(self) -> str:
+        """获取数据目录"""
+        return self.get_data_config().get("data_dir", "data/benchmarks/lean4/test")
 
     def get_max_retries(self) -> int:
         """获取最大重试次数"""
@@ -91,7 +105,6 @@ class ConfigManager:
         """
         根据时间创建一个文件夹，并返回文件夹路径
         """
-
         log_dir = self.get("logger.save_dir")
         log_config = self.get("logger.log_config")
         save_dir = datetime.now().strftime(f"{log_dir}/%Y%m%d_%H%M%S")

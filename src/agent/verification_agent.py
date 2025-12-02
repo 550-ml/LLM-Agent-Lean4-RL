@@ -6,21 +6,32 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class VerificationAgent(BaseAgent):
+class VerificationAgent:
     """
     验证智能体
-
-    功能：
-    1. 将 {{proof}} 替换为模型生成的 Lean4 证明
-    2. 调用 Lean4 Runner 进行编译验证
-    3. 返回 success / error / lean_output
     """
 
-    def __init__(self, lean_runner: lean4_runner, llm: BaseLLM):
-        super().__init__(llm, "VerificationAgent")
+    def __init__(self, lean_runner: lean4_runner):
+        super.__init__()
         self.lean_runner = lean_runner
 
-    def execute(self, state: AgentState) -> dict:
+    def execute(
+        self,
+        full_proof: str,
+    ):
+        """执行 Lean4 验证"""
+        result = self.lean_runner.execute(full_proof)
+        success = getattr(result, "success", False)
+        output = getattr(result, "output", "")
+        error = getattr(result, "error", "")
+        if success:
+            return {
+                "success": True,
+                "output": output,
+            }
+        return result
+
+    def execute2(self, state: AgentState) -> dict:
         """执行 Lean4 验证"""
 
         # === 1. 将 proof 替换进去 ===
@@ -35,8 +46,7 @@ class VerificationAgent(BaseAgent):
                 "output": None,
             }
 
-        full_code = state.task_template.replace(
-            "{proof}", state.current_proof)
+        full_code = state.task_template.replace("{proof}", state.current_proof)
         logger.info(f"最后验证完整代码: {full_code}")
         # === 2. 运行 Lean ===
         result = self.lean_runner.execute(full_code)
@@ -56,9 +66,7 @@ class VerificationAgent(BaseAgent):
 
         # 将 Lean 错误信息和本次尝试的 proof 一并记录，便于生成阶段诊断
         if hasattr(state, "error_history"):
-            state.error_history.append(
-                f"Lean error: {normalized_error}\nProof attempt:\n{state.current_proof}"
-            )
+            state.error_history.append(f"Lean error: {normalized_error}\nProof attempt:\n{state.current_proof}")
 
         return {
             "success": False,

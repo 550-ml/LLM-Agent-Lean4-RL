@@ -2,7 +2,6 @@
 LLM 工厂类：根据配置创建对应的 LLM 实例
 """
 
-from typing import Optional
 from .base import BaseLLM, LLMConfig
 from .openai_client import OpenAIClient
 from .vllm_client import VLLMClient
@@ -43,8 +42,7 @@ class LLMFactory:
             return VLLMClient(config)
 
         else:
-            raise ValueError(f"Unsupported model: {config.model_name}. "
-                             f"Supported models: gpt-*, o*, vllm:*")
+            raise ValueError(f"Unsupported model: {config.model_name}. Supported models: gpt-*, o*, vllm:*")
 
     @staticmethod
     def create_from_dict(config_dict: dict) -> BaseLLM:
