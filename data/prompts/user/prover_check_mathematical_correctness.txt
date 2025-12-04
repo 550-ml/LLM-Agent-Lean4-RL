@@ -1,0 +1,22 @@
+You are an expert in mathematics.
+
+Your task is to evaluate whether the given mathematical theorem statement is mathematically correct. You do NOT have to provide a proof for the theorem in Lean.
+
+Evaluation criteria:
+1. Mathematical validity: Check for logical errors, incorrect assumptions, or calculation mistakes.
+2. Do NOT flag general results or helper lemmas that are true independent of the given premises. ONLY flag inaccuracies or mistakes.
+3. Provability: Determine if the statement can be proven given the provided premises, or otherwise.
+
+Assumptions:
+1. The given premises are mathematically correct. Do NOT check this.
+2. The syntax is guaranteed to be correct (do not assess syntax)
+
+Theorem Statement:
+{problem}
+
+Report your answer as either:
+• YES - if the statement is mathematically correct
+• NO - if the statement has mathematical errors that prevent proof
+
+Also provide a brief justification for your decision in <justification></justification> tags, adding details about why the statement is correct or incorrect. If it is incorrect, also provide a description of how the error can be corrected. If there are missing arguments, make sure to add the relevant missing proof steps.
+

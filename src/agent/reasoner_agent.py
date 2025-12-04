@@ -41,6 +41,7 @@ class ReasonerAgent(BaseAgent):
             "user",
             "reasoner_search_query",
             problem=problem,
+            error_message=error_message,
         )
         response = self.llm.get_response(
             [
@@ -94,6 +95,153 @@ class ReasonerAgent(BaseAgent):
             informal_proof=informal_proof,
         )  # TODO lean hint
         return self.llm.get_response(user_prompt)
+
+    def refine_sketch_based_error(
+        self,
+        sketch,
+        error_message,
+    ):
+        user_prompt = self.prompt_loader.load_and_format(
+            "user",
+            "reasoner_refine_sketch_based_error",
+            sketch=sketch,
+            error_message=error_message,
+        )
+        return self.llm.get_response(user_prompt)
+
+    def correct_sketch_error(
+        self,
+        sketch: str,
+        error_message: str,
+        augmented_theorems: List[Dict[str, Any]],
+        problem: str,
+    ):
+        """纠正sketch错误"""
+        user_prompt = self.prompt_loader.load_and_format(
+            "user",
+            "reasoner_correct_sketch_error",
+            sketch=sketch,
+            error_message=error_message,
+            augmented_theorems=augmented_theorems,
+            problem=problem,
+        )
+        return self.llm.get_response(user_prompt)
+
+    def check_mathematic_correctness(
+        self,
+        subgoal,
+        relevant_theorems,
+    ):
+        user_prompt = self.prompt_loader.load_and_format(
+            "user",
+            "reasoner_check_mathematic_correctness",
+        )
+        response = self.llm.get_response(user_prompt)
+        correct = response.get("correct")
+        justification = response.get("justification")
+        return correct, justification
+
+    def extract_subgoals(self, sketch: str, lean_hints: str = "") -> List[str]:
+        """从sketch提取subgoals
+
+        Args:
+            sketch: 证明草图（包含sorry的Lean代码）
+            lean_hints: Lean提示信息
+
+        Returns:
+            List[str]: 提取出的子目标定理列表，每个元素是一个独立的Lean代码块
+        """
+        user_prompt = self.prompt_loader.load_and_format(
+            "user",
+            "reasoner_subgoal_extract",
+            proof_sketch=sketch,
+            lean_hints=lean_hints,
+        )
+        response = self.llm.get_response(user_prompt)
+        subgoals = self._parse_lean_code_blocks(response)
+        logger.info(f"从sketch中提取了 {len(subgoals)} 个子目标")
+        return subgoals
+
+    def attemp_reasoner_proof(
+        self,
+        subgoal,
+        relevant_theorems,
+    ):
+        user_prompt = self.prompt_loader.load_and_format(
+            "user",
+            "reasoner_attemp_reasoner_proof",
+            subgoal=subgoal,
+            relevant_theorems=relevant_theorems,
+        )
+        return self.llm.get_response(user_prompt)
+
+    def correct_theorem_error(
+        self,
+        subgoal: str,
+        error_message: str,
+    ):
+        """纠正子目标错误"""
+        user_prompt = self.prompt_loader.load_and_format(
+            "user",
+            "reasoner_correct_theorem_error",
+            potentially_useful_theorems=subgoal,
+            error_message=error_message,
+        )
+        return self.llm.get_response(user_prompt)
+
+    def use_sketch_and_throrems(
+        self,
+        sketch,
+        all_theorems,
+    ):
+        user_prompt = self.prompt_loader.load_and_format(
+            "user",
+            "reasoner_use_sketch_and_throrems",
+            sketch=sketch,
+            all_theorems=all_theorems,
+        )
+        return self.llm.get_response(user_prompt)
+
+    def assembly_correction(
+        self,
+        error_message,
+    ):
+        user_prompt = self.prompt_loader.load_and_format(
+            "user",
+            "reasoner_assembly_correction",
+            error_message=error_message,
+        )
+        return self.llm.get_response(user_prompt)
+
+    def check_mathematic_correctness(
+        self,
+        subgoal,
+        relevant_theorems,
+    ):
+        user_prompt = self.prompt_loader.load_and_format(
+            "user",
+            "reasoner_check_mathematic_correctness",
+        )
+        return self.llm.get_response(user_prompt)
+
+    def _parse_lean_code_blocks(self, response: str) -> List[str]:
+        """从LLM响应中提取所有Lean代码块
+
+        Args:
+            response: LLM的响应文本
+
+        Returns:
+            List[str]: 提取出的Lean代码块列表
+        """
+        response = (response or "").strip()
+        if not response:
+            return []
+
+        # 匹配 ```lean 或 ```lean4 代码块
+        # ```lean4\n...\n``` 或 ```lean\n...\n```
+        pattern = re.compile(r"```(?:lean4?)\s*\n(.*?)```", re.DOTALL | re.IGNORECASE)
+        matches = pattern.findall(response)
+        return matches
 
     def _parse_string_list(self, response: str) -> List[str]:
         """从 LLM 输出里提取 <search>...</search> 标签作为检索查询。"""

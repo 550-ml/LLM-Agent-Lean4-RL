@@ -1,0 +1,28 @@
+You are an expert in writing Lean 4 proofs. You are given a Lean 4 proof sketch where one of the subgoals has some issues. Your task is to fix the issues and write a new proof sketch.
+
+Proof Sketch:
+{sketch}
+
+Issues:
+{error_message}
+
+Lean Hints:
+{lean_hints}
+
+Rules:
+1. Same proof level = same indentation: All tactics at the same logical level must use identical indentation
+2. Consistent characters: Use either tabs OR spaces consistently (don't mix)
+3. Proper nesting: Indent sub-proofs one level deeper than their parent
+4. Do NOT nest `have` statements in each other. Write different have statements for different sub goals.
+5. Ensure all sub goals are named. Do NOT create anonymous have statements.
+6. Do NOT include any imports or open statements.
+7. One line = One `have` subgoal. Do NOT split subgoals across different lines.
+8. Use proper Lean 4 syntax and conventions. Ensure the proof sketch is enclosed in triple backticks ```lean```
+9. Use `sorry` for all subgoal proofs - focus on structure, not implementation
+10. **Do NOT use `sorry` for the main goal proof** - use your subgoals to prove it
+11. NEVER use `sorry` IN the theorem statement itself
+12. Ensure subgoals collectively provide everything needed for the main proof
+13. Make the logical dependencies between subgoals explicit. Ensure that the subgoals are valid and provable in Lean 4.
+14. Modify only the incorrect subgoal and everything that follows it in the proof sketch. Leave all preceding portions unchanged.
+15. Either modify the problematic subgoals to fix the errors, or add additional subgoals to fill in the missing mathematical arguments.
+

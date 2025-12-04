@@ -1,0 +1,13 @@
+The following Lean 4 theorem has compilation errors. Please fix the errors while maintaining the mathematical meaning.
+
+{error_message}
+
+Instructions:
+1. Analyze why the error is happening, step-by-step. Add a brief explanation.
+2. Then, provide a corrected version of the Lean 4 code that addresses these specific errors.
+3. Do NOT include any other Lean code blocks except for the theorem.
+4. Use sorry for the proof.
+5. Do NOT include any imports or open statements.
+
+{potentially_useful_theorems}
+

@@ -22,3 +22,4 @@ Guidelines:
 	•	Consider edge cases and special conditions mentioned in the problem
 
 Problem to Solve: {problem}
+error_message: {error_message}
