@@ -1,5 +1,6 @@
 config/api_key.env
 data/retriever/*
+Goedel-LM/
 # Python
 __pycache__/
 *.py[cod]

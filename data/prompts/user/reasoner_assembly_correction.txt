@@ -1,5 +1,8 @@
 The following Lean 4 code has compilation errors. Please fix the errors while maintaining the mathematical meaning.
+code:
+{sketch_assembled}
 
+Error Message:
 {error_message}
 
 Lean Hints:
@@ -14,4 +17,6 @@ Instructions:
 6. Do NOT change anything in the original theorem statement.
 7. Do NOT include the helper theorem definitions in your response.
 8. Do NOT write a proof for any subgoal from scratch. ALWAYS use the supplied theorems.
+
+Your answer should be a single Lean 4 code block enclosed in ```lean``` containing only the corrected proof for the main theorem.
 

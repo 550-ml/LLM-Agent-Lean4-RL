@@ -37,6 +37,10 @@ class HilbertCoordinator:
         self.verification = verification
         self.max_depth = 5
         self.sketch_attemps = 3
+        self.sketch_correction_attemps = 3
+        self.theorem_corrections = 5
+        self.subgoal_corrections = 5
+        self.head_theorems_sketch = 5
 
     def generate_proof(
         self,
@@ -69,7 +73,7 @@ class HilbertCoordinator:
             )
             # 3. refine_and_validate_sketch
             sketch_assembled, subgoals, proved_subgoals = self.refine_and_validate_sketch(
-                proof_sketch, header, relevant_theorems, problem
+                proof_sketch, header, relevant_theorems, problem, docstring
             )
             # TODO sketch_assembled, subgoals, proved_subgoals ← REFINEANDVALIDATESKETCH(sketch, header, relevant_theorems) 进一步整理
 
@@ -115,11 +119,15 @@ class HilbertCoordinator:
         header: str,
         relevant_theorems: List[Dict[str, Any]],
         problem: str,
+        docstring: str,
     ):
         """修复并验证sketch"""
-        for attempt in range(self.sketch_attemps):
-            # 1.把header + sketch拼接成完整的Lean
-            sketch_syntactic = self.complete_and_correct_syntax_error(sketch, header, relevant_theorems, problem)
+        for attempt in range(self.sketch_correction_attemps):
+            # 1. sketch 能完整过lean4
+            sketch_syntactic = self.complete_and_correct_syntax_error(
+                sketch, header, relevant_theorems, problem, docstring
+            )
+            logger.info(f"Sketch syntactic: {sketch_syntactic}")
             if sketch_syntactic is None:
                 return None
             # 2. 提取要证明的子定理
@@ -142,6 +150,128 @@ class HilbertCoordinator:
                     return refined_sketch, verified_subgoals, proved_subgoals
                 else:
                     return None, None, None
+
+    # * 3.1 完成sketch并纠正语法错误
+    def complete_and_correct_syntax_error(
+        self,
+        sketch: str,
+        header: str,
+        relevant_theorems: List[Dict[str, Any]],
+        problem: str,
+        docstring: str,
+    ) -> str:
+        """完成并纠正语法错误"""
+        full_code = header + sketch
+        logger.debug(f"Full code: {full_code}")
+        verified, error_message = self.verification.execute(full_code)
+        logger.info(f"Verified: {verified}, Error message: {error_message}")
+        #  要返回
+        if verified:
+            return sketch
+        for _ in range(self.theorem_corrections):
+            augmented_theorems = self.augment_theorems(error_message, relevant_theorems, problem=problem)
+            logger.info(f"Augmented theorems: {augmented_theorems}")
+            sketch = self.reasoner.correct_sketch_error(problem, docstring, sketch, error_message, augmented_theorems)
+            logger.info(f"Corrected sketch: {sketch}")
+            code = header + "\n" + sketch
+            verified, error_message = self.verification.execute(code)
+            logger.debug(f"Code: {code}")
+            logger.info(f"Verified: {verified}, Error message: {error_message}")
+            if verified:
+                return sketch
+        return None
+
+    # * 3.1.1
+    def augment_theorems(
+        self,
+        error_message: str,
+        existing_theorems: List[Dict[str, Any]],
+        problem: str,
+    ):
+        """根据错误信息增强已有的定理"""
+        # 从错误信息中提取缺失的标识符（如 "unknown identifier 'convexHull'"）
+        missing_ids = self._extract_missing_identifiers(error_message)
+        logger.info(f"Missing identifiers: {missing_ids}")
+
+        # 基于错误信息检索额外的定理
+        if missing_ids:
+            additional_theorems = self.retrieve_theorems(problem, error_message)
+            logger.info(f"Additional theorems: {additional_theorems}")
+            return existing_theorems + additional_theorems
+        return existing_theorems
+
+    def _extract_missing_identifiers(self, error_message: str) -> List[str]:
+        """从错误信息中提取缺失的标识符
+
+        示例错误信息:
+        - "unknown identifier 'convexHull'"
+        - "unknown constant 'Finset.card_eq'"
+        """
+        import re
+
+        pattern = re.compile(
+            r"(?:unknown identifier|unknown constant)\s+'?([\w\.]+)'?",
+            re.IGNORECASE,
+        )
+        return pattern.findall(error_message or "")
+
+    # * 3.2 提取子目标
+    def extract_subgoals(self, sketch: str, header: str) -> List[str]:
+        subgoals = self.reasoner.extract_subgoals(sketch)
+        logger.info(f"Subgoals: {subgoals}")
+        correct_subgoals = []
+        for subgoal in subgoals:
+            logger.info(f"Subgoal: {subgoal}")
+            verified, error_message = self.verification.execute(header + "\n" + subgoal)
+            logger.info(f"Verified: {verified}, Error message: {error_message}")
+            if verified:
+                correct_subgoals.append(subgoal)
+            else:
+                corrected = False
+                for _ in range(self.subgoal_corrections):
+                    correct_subgoal = self.reasoner.correct_theorem_error(subgoal, error_message)
+                    logger.info(f"Corrected subgoal: {correct_subgoal}")
+                    verified, error_message = self.verification.execute(header + "\n" + correct_subgoal)
+                    logger.info(f"Verified: {verified}, Error message: {error_message}")
+                    if verified:
+                        correct_subgoals.append(correct_subgoal)
+                        corrected = True
+                        break
+                if not corrected:
+                    return None
+        return correct_subgoals
+
+    # * 3.3 重新组装sketch
+    def assemble_proof_from_subgoals(self, sketch, subgoals, header, problem):
+        # all_theorems = self.concate_theorems(subgoals)
+        sketch_assembeld = self.reasoner.use_sketch_and_throrems(sketch, subgoals)
+        logger.info(f"Sketch assembled: {sketch_assembeld}")
+        corrected_proof = self.verify_and_correct_proof_with_theorems(sketch_assembeld, header, subgoals, problem)
+        logger.info(f"Corrected proof: {corrected_proof}")
+        return corrected_proof
+
+    def verify_and_correct_proof_with_theorems(
+        self,
+        sketch_assembled,
+        header,
+        relevant_theorems,
+        problem,
+    ):
+        theorems_block = "\n\n".join(relevant_theorems)
+        full_proof = header + "\n" + theorems_block + "\n" + sketch_assembled
+        verified, error_message = self.verification.execute(full_proof)
+        logger.info(f"Verified: {verified}, Error message: {error_message}")
+        if verified:
+            return sketch_assembled
+        for _ in range(self.head_theorems_sketch):
+            corrected_proof = self.reasoner.assembly_correction(error_message, sketch_assembled)
+            logger.info(f"Corrected proof: {corrected_proof}")
+            full_proof = header + "\n" + relevant_theorems + "\n" + corrected_proof
+            verified, error_message = self.verification.execute(full_proof)
+            logger.info(f"Verified: {verified}, Error message: {error_message}")
+            if verified:
+                return corrected_proof
+        return None
 
     def refine_sketch_based_error(
         self,
@@ -186,83 +316,6 @@ class HilbertCoordinator:
             if verified:
                 return proof
         return None
-
-    def complete_and_correct_syntax_error(
-        self,
-        sketch: str,
-        header: str,
-        relevant_theorems: List[Dict[str, Any]],
-        problem: str,
-    ) -> str:
-        """完成并纠正语法错误"""
-        full_code = header + sketch
-        verified, error_message = self.verification.execute(full_code)
-        #  要返回
-        if verified:
-            return sketch
-        for attempt in range(self.sketch_attemps):
-            augmented_theorems = self.augment_theorems(error_message, relevant_theorems, problem=problem)
-            sketch = self.reasoner.correct_sketch_error(sketch, error_message, augmented_theorems, problem)
-            verified, error_message = self.verification.execute(sketch)
-            if verified:
-                return sketch
-        return None
-
-    def assemble_proof_from_subgoals(self, sketch, subgoals, header, problem):
-        # all_theorems = self.concate_theorems(subgoals)
-        sketch_assembeld = self.reasoner.use_sketch_and_throrems(sketch, subgoals)
-        corrected_proof = self.verify_and_correct_proof_with_theorems(sketch_assembeld, header, subgoals, problem)
-        return corrected_proof
-
-    def verify_and_correct_proof_with_theorems(
-        self,
-        sketch_assembled,
-        header,
-        relevant_theorems,
-        problem,
-    ):
-        full_proof = header + relevant_theorems + sketch_assembled
-        verified, error_message = self.verification.execute(full_proof)
-        if verified:
-            return sketch_assembled
-        for _ in range(self.sketch_attemps):
-            corrected_proof = self.reasoner.assembly_correction(error_message)
-            full_proof = header + relevant_theorems + corrected_proof
-            verified, error_message = self.verification.execute(full_proof)
-            if verified:
-                return corrected_proof
-        return None
-
-    def extract_subgoals(self, sketch: str, header: str) -> List[str]:
-        subgoals = self.reasoner.extract_subgoals(sketch, header)
-        correct_subgoals = []
-        for subgoal in subgoals:
-            verified, error_message = self.verification.execute(header + subgoal)
-            if verified:
-                correct_subgoals.append(subgoal)
-            else:
-                corrected = False
-                for _ in range(self.sketch_attemps):
-                    correct_subgoal = self.reasoner.correct_theorem_error(subgoal, error_message)
-                    verified, error_message = self.verification.execute(header + correct_subgoal)
-                    if verified:
-                        correct_subgoals.append(correct_subgoal)
-                        corrected = True
-                        break
-                if not corrected:
-                    return None
-        return correct_subgoals
-
-    def augment_theorems(
-        self,
-        error_message: str,
-        existing_theorems: List[Dict[str, Any]],
-        problem: str,
-    ):
-        """根据错误信息增强已有的定理"""
-        # TODO extract_missing_identifiers(error_message)
-        additional_theorems = self.retrieve_theorems(problem, error_message)
-        return existing_theorems + additional_theorems
 
 
 class AgentCoordinator:

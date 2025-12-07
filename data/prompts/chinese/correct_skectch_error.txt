@@ -1,0 +1,26 @@
+以下 Lean 4 代码存在编译错误。请在保持数学含义不变的前提下修复这些错误。
+
+原始描述：
+{informal_statement}
+{error_message}
+
+Lean 提示：{lean_hints}
+
+要求：
+
+分析这个定理想要证明的内容。然后一步步分析错误产生的原因，并给出简要说明。
+
+然后给出一份修正后的 Lean 4 代码，解决这些特定的错误。
+
+除了证明的代码块之外，不要包含任何其他 Lean 代码块。不要添加任何 import 或 open 语句。
+
+对所有的 have 子证明使用 sorry。
+
+在 have 以外的地方不要使用 sorry。在证明主定理时不能使用 sorry。
+
+不要修改原定理的陈述（theorem statement）。
+
+不要嵌套使用 have 语句。每一个子目标都要单独命名，并尽量拆成多个独立的子目标。
+
+不要创建匿名的 have 语句。
+{useful_theorems_section}

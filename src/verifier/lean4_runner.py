@@ -70,12 +70,13 @@ class Lean4Runner:
 
         # 生成唯一临时文件名（支持并发）
         temp_file = f"temp_{uuid.uuid4().hex[:8]}.lean"
-        temp_path = os.path.join(self.project_path + "/temp", temp_file)
+        temp_dir = os.path.join(self.project_path, "temp")
+        temp_path = os.path.join(temp_dir, temp_file)
         self.temp_files.append(temp_path)
 
         try:
-            # 确保目录存在
-            os.makedirs(self.project_path, exist_ok=True)
+            # 确保临时目录存在
+            os.makedirs(temp_dir, exist_ok=True)
 
             # 写入临时文件
             with open(temp_path, "w", encoding="utf-8") as f:
@@ -83,15 +84,17 @@ class Lean4Runner:
 
             logger.debug(f"执行 Lean4 验证: {temp_file}")
 
-            # 执行 Lean 编译验证
+            # 执行 Lean 编译验证（使用相对路径）
+            relative_temp_path = os.path.join("temp", temp_file)
             result = subprocess.run(
-                ["lake", "lean", temp_path],
+                ["lake", "lean", relative_temp_path],
                 cwd=self.project_path,  # 在项目目录中执行
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
                 check=False,  # 不抛出异常，让我们自己处理错误
                 timeout=timeout,
+                env=os.environ.copy(),  # 继承当前环境变量
             )
 
             execution_time = time.time() - start_time

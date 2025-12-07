@@ -1,10 +1,21 @@
 The following Lean 4 code has compilation errors. Please fix the errors while maintaining the mathematical meaning.  
 
-Original statement: 
-{informal_statement}  
+problem informal statement: 
+{docstring}  
+
+Problem:
+{problem}
+
+Sketch:
+{sketch}
+
+Error_message:
 {error_message}  
 
-Lean Hints: {lean_hints}  
+Candidate Theorems:
+{augmented_theorems}
+
+Lean Hints: None
 Instructions: 
 1. Analyze what the theorem is trying to prove. Then, analyze why the error is happening, step-by-step. Add a brief explanation. 
 2. Then, provide a corrected version of the Lean 4 code that addresses these specific errors. 
@@ -15,4 +26,4 @@ Instructions:
 7. Do NOT nest `have` statements in each other. Use distinct sub-goals as much as possible. Ensure all sub goals are named. 
 
 Do NOT create anonymous have statements.  
-{useful_theorems_section}
+

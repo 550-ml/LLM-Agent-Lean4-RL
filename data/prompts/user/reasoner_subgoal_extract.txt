@@ -17,7 +17,7 @@ IMPORTANT INSTRUCTION: Do NOT, under ANY circumstances, allow division and subtr
 IMPORTANT INSTRUCTION: Do NOT, under ANY circumstances, allow division and subtraction operations on variables of type natural numbers (Nat or N), unless REQUIRED by the theorem statement. For example, do NOT allow expressions like (a-b) or (a/b) where a, b are of type N. ALWAYS cast the variables to a suitable type (Z, Q or R) when performing arithmetic operations. AVOID natural number arithmetic UNLESS NEEDED by the theorem statement.
 
 Lean Hints:
-{lean_hints}
+None
 
 Proof Sketch:
 ```lean4

@@ -3,7 +3,7 @@
 
 # 数据配置
 data:
-  project_dir: "data/benchmarks/lean4"  # 项目目录
+  project_dir: "/home/wangtuo/WorkSpace/lean/LLM-Agent-Lean4-RL/data/benchmarks/lean4"  # 项目目录
   data_dir: "data/benchmarks/lean4/test"
 
 prompt_loader:
@@ -19,31 +19,6 @@ llm:
     presence_penalty: 0.0
     max_retries: 3
     retry_delay: 1.0
-    base_url: "https://api.chatanywhere.tech"
-
-    
-  planning:
-    model: "gpt-4o-mini"  # 规划智能体使用的模型
-    temperature: 0.7
-    max_tokens: 2048
-    top_p: 1.0
-    frequency_penalty: 0.0
-    presence_penalty: 0.0
-    max_retries: 3
-    retry_delay: 1.0
-    timeout: 60
-    base_url: "https://api.chatanywhere.tech"
-  
-  generation:
-    model: "gpt-4o-mini"  # 生成智能体使用的模型
-    temperature: 0.7
-    max_tokens: 2048
-    top_p: 1.0
-    frequency_penalty: 0.0
-    presence_penalty: 0.0
-    max_retries: 3
-    retry_delay: 1.0
-    timeout: 60
     base_url: "https://api.chatanywhere.tech"
 
   verification:

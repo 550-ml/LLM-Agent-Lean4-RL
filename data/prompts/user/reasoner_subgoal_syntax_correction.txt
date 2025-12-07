@@ -1,0 +1,18 @@
+The following Lean 4 theorem has compilation errors. Please fix the errors while maintaining the mathematical meaning.
+
+subgoal:
+{subgoal}
+
+Error Message:
+{error_message}
+
+Instructions:
+1. Analyze why the error is happening, step-by-step. Add a brief explanation.
+2. Then, provide a corrected version of the Lean 4 code that addresses these specific errors.
+3. Do NOT include any other Lean code blocks except for the theorem.
+4. Use sorry for the proof.
+5. Do NOT include any imports or open statements.
+
+
+Your answer should be a single Lean 4 code block enclosed in ```lean``` containing only the corrected theorem statement with sorry as the proof.
+

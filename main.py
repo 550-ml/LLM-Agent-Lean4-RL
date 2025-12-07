@@ -124,7 +124,10 @@ def main():
     reasoner_llm = LLMFactory.create_from_dict(config_manager.get_llm_config("reasoner"))
     retriever = RetrieverAgent(**config_manager.get_retriever_config())
     reansoner = ReasonerAgent(reasoner_llm, prompt_loader=prompt_loader, retriever=retriever)
-    lean_runner = Lean4Runner(project_path=config_manager.get_data_dir())
+
+    # 获取验证器配置
+    verifier_config = config_manager.get_verifier_config()
+    lean_runner = Lean4Runner(project_path=verifier_config.get("project_path", "data/benchmarks/lean4"))
     verification = VerificationAgent(lean_runner)
 
     coordinator = HilbertCoordinator(reasoner=reansoner, retriever=retriever, verification=verification)
