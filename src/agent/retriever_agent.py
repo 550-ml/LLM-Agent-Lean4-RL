@@ -22,7 +22,7 @@ class RetrieverAgent:
         # 1. 加载faiss索引
         index_path = Path(index_dir) / "mathlib_informal.index"
         self.index = faiss.read_index(str(index_path))
-        # 2. 加载sentence_transformer模型
+        # 2. 加载sentence_transformer模型（使用本地缓存）
         self.model = SentenceTransformer(model_name)
         # 3. 加载dataset
         self.dataset = load_dataset("FrenzyMath/mathlib_informal_v4.16.0", split="train")
@@ -44,17 +44,18 @@ class RetrieverAgent:
         query: str,
         top_k: int = 5,
     ) -> List[Dict]:
-        query_embedding = self.model.encode(query, normalize_embeddings=True).astype("float32")
+        query_embedding = self.model.encode([query], normalize_embeddings=True).astype("float32")
         scores, indices = self.index.search(query_embedding, top_k)
         results = []
         for score, index in zip(scores[0], indices[0]):
             record = self.dataset[int(index)]
             results.append(
                 {
+                    "name": record["name"],
                     "signature": record["signature"],
                     "type": record["type"],
-                    "value": record["value"],
+                    # "value": record["value"],
                     "score": score,
                 }
             )
-        return results
+        return results[:2]

@@ -12,7 +12,7 @@ Search Process:
 	•	Relevant definitions useful for the proof or any used theorem (e.g. “definition of a group”, “definition of a metric space”)
 
 Search Query Format:
-Enclose each search query in  tags with your informal description.
+Enclose each search query in <search>...</search> tags with your informal description.
 Limit yourself to a maximum of 5 search queries.
 Make the search queries simple, concise, and clear.
 
@@ -21,5 +21,13 @@ Guidelines:
 	•	Search for theorems that might automate parts of the proof
 	•	Consider edge cases and special conditions mentioned in the problem
 
-Problem to Solve: {problem}
-error_message: {error_message}
+Problem to Solve:
+{problem}
+
+Error Context (if any):
+{error_message}
+
+Example Output:
+<search>properties of convex hull in real plane</search>
+<search>theorems about cardinality of finite sets</search>
+<search>collinearity and general position</search>

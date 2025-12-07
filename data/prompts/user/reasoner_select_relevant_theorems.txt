@@ -1,0 +1,21 @@
+You are helping select the most relevant theorems for proving a Lean 4 theorem.
+
+Problem:
+{problem}
+
+Candidate Theorems:
+{theorems}
+
+Instructions:
+1. Carefully read the problem statement and understand what needs to be proven.
+2. Review each candidate theorem and assess its relevance to the problem.
+3. Select the theorems that are most likely to be useful in the proof.
+4. Return ONLY the indices of the selected theorems (e.g., 1, 3, 5).
+5. Select at most 10 theorems.
+
+Output format:
+Return a JSON array of integers representing the indices of selected theorems.
+Example: [1, 3, 5, 7]
+
+Your response:
+

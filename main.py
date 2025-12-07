@@ -117,12 +117,13 @@ def main():
     data_path = config_manager.get_data_dir()
     loader = PutnamLoader(data_path)
     lean_files = loader.load_lean_files()  # [Path("data/benchmarks/lean4/test/putnam_1962_a1.lean"), Path("data/benchmarks/lean4/test/putnam_1962_a2.lean"), ...]
+    print(lean_files)
 
     # 2.相关模型加载
     prompt_loader = PromptLoader(**config_manager.get_prompt_loader_config())
     reasoner_llm = LLMFactory.create_from_dict(config_manager.get_llm_config("reasoner"))
     retriever = RetrieverAgent(**config_manager.get_retriever_config())
-    reansoner = ReasonerAgent(reasoner_llm, prompt_loader=prompt_loader)
+    reansoner = ReasonerAgent(reasoner_llm, prompt_loader=prompt_loader, retriever=retriever)
     lean_runner = Lean4Runner(project_path=config_manager.get_data_dir())
     verification = VerificationAgent(lean_runner)
 
@@ -131,7 +132,9 @@ def main():
     # 3. 处理每个文件
     for filename in lean_files:
         problem = loader.load_file(filename)
-
+        logger.info(f"Problem: {problem.problem}")
+        result = coordinator.generate_proof(problem.problem, problem.header, problem.docstring)
+        break
     # for filename in :
     #     result = process_single_file(filename, loader, config_manager)
     #     break

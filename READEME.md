@@ -28,6 +28,12 @@
 11.30
 - 完成向量构建，使用faiss，存到本地。写个test脚本。使用的时候，加载faiss，加载dataset，然后embedding，最后查找对应定理
 
+12.4 
+- 整体代码框架完成，但是没有运行跑通
+  
+明天
+- 调试整体代码
+
 # lean的理解
 ```
 by
@@ -85,3 +91,28 @@ by
 - 检查语法
 - 上下文正确
 - 左侧必须合法
+
+# 例子
+## sketch
+```lean
+theorem example_theorem
+  (A B C : Set ℝ)
+  (h1 : A ⊆ B)
+  (h2 : B ⊆ C)
+  : A ⊆ C := by
+  intro x
+  intro hxA
+
+  -- Subgoal 1: Show x ∈ B using h1
+  have hxB : x ∈ B := by
+    -- reasoning: A ⊆ B, x ∈ A → x ∈ B
+    sorry
+
+  -- Subgoal 2: Show x ∈ C using h2
+  have hxC : x ∈ C := by
+    -- reasoning: B ⊆ C, x ∈ B → x ∈ C
+    sorry
+
+  -- Final step: combine subgoals
+  exact hxC
+```

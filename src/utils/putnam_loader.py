@@ -11,18 +11,6 @@ from typing import List, Tuple
 
 
 @dataclass
-class PutnamProblem2:
-    """Putnam 问题数据结构"""
-
-    file_path: str
-    theorem_name: str
-    docstring: str  # 问题描述（从 /-- ... -/ 中提取）
-    theorem_statement: str  # 完整的定理语句（包含 sorry）
-    imports: List[str]  # import 语句
-    opens: List[str]  # open 语句
-
-
-@dataclass
 class PutnamProblem:
     file_path: str
     file_name: str

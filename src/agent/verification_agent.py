@@ -1,7 +1,7 @@
-from .base import BaseAgent, AgentState
-from ..verifier import lean4_runner
-from ..llm import BaseLLM
 import logging
+
+from ..verifier import lean4_runner
+from .base import AgentState
 
 logger = logging.getLogger(__name__)
 
@@ -12,7 +12,6 @@ class VerificationAgent:
     """
 
     def __init__(self, lean_runner: lean4_runner):
-        super.__init__()
         self.lean_runner = lean_runner
 
     def execute(

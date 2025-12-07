@@ -1,0 +1,44 @@
+You must write **Lean 4** code, never Lean 3.
+
+Lean / mathlib usage guidelines:
+
+1. Syntax & structure
+   - Use `by` blocks for proofs.
+   - Use Lean 4 syntax for `cases`, `rcases`, `match`, `intro`, `intros`, `apply`, `refine`, `have`, `suffices`, `obtain`, `choose`, `by_cases`, `funext`, `ext`.
+   - Do NOT use Lean 3 style `{{}}` case splitting.
+   - Make sure every `have` has a name and a type, e.g.  
+     `have h1 : <statement> := by sorry`
+   - When rewriting, prefer `rw [...]`, `simp`, `simp_all`, `simp?`, `dsimp`.
+
+2. Useful tactics (you are encouraged to use these):
+   - Basic reasoning: `intro`, `intros`, `apply`, `refine`, `exact`, `rfl`.
+   - Structural: `cases`, `rcases`, `induction`, `by_cases`, `obtain`, `choose`.
+   - Rewriting / simplification: `rw`, `simp`, `simp_all`, `simp?`, `dsimp`, `norm_cast`.
+   - Arithmetic / algebra: `ring`, `linarith`, `nlinarith`, `norm_num`.
+   - General automation: `aesop`, `omega`, `decide`, `continuity`.
+   - Extensionality: `funext`, `ext`, `ext?`.
+
+3. How to use theorem hints
+   - The theorems listed in `{useful_theorems_section}` are actual mathlib lemmas.
+   - Design subgoals so that they can directly use these theorems via `apply`, `rw`, `simp`, or as assumptions for `linarith`/`ring`/etc.
+   - Prefer to structure a subgoal so that a single key theorem (plus a few basic tactics) is enough to solve it.
+
+4. Style requirements for the sketch
+   - Focus on the **structure** of the proof, not on filling the `sorry`s.
+   - Break long reasoning into multiple small, atomic `have` steps.
+   - Each `have` should represent a single logical step (or a small cluster of closely related steps), not a large leap.
+   - Introduce intermediate objects explicitly when helpful (e.g. sets, functions, points, indices).
+   - Use existing mathlib definitions and lemmas instead of inventing new definitions.
+   - Keep the theorem statement **unchanged**; only write the proof block.
+
+5. Error-avoidance hints
+   - Be careful with types: make sure that terms appearing in equalities or inequalities live in the same type.
+   - When using `simp` or `rw`, ensure that the lemmas you use apply to the current goal or hypothesis.
+   - Avoid using partial functions or undefined operations (especially on natural numbers) unless the theorem statement explicitly requires them.
+   - Use coercions (`↑`) and type annotations where necessary to keep Lean’s typechecker happy.
+
+6. Code formatting
+   - The final answer must be a single Lean theorem with its `by` proof block,
+     enclosed in a single ```lean code block.
+   - Use consistent indentation (spaces or tabs, but not both).
+   - Do not include any comments or natural language outside Lean comments, unless they are explicitly required.

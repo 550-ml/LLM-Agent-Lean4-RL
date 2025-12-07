@@ -2,13 +2,13 @@
 Lean4 代码执行器
 """
 
-import subprocess
+import logging
 import os
 import re
+import subprocess
 import uuid
-import logging
-from typing import Optional, List, Dict
 from dataclasses import dataclass, field
+from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -348,7 +348,7 @@ def execute_lean_code(
 
 
 if __name__ == "__main__":
-    code = """
+    code = r"""
     import Mathlib
 open MeasureTheory
 

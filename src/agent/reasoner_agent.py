@@ -23,6 +23,9 @@ class ReasonerAgent(BaseAgent):
         super().__init__(llm, "ReasonerAgent")
         self.prompt_loader = prompt_loader
 
+    # ------------------------------------------------------------------
+    # Theorem Retrieval
+    # ------------------------------------------------------------------
     def generate_search_queries(
         self,
         problem: str,
@@ -60,7 +63,7 @@ class ReasonerAgent(BaseAgent):
         """挑选相关定理"""
         user_prompt = self.prompt_loader.load_and_format(
             "user",
-            "reasoner_select_relevant_theorems",
+            "reasoner_search_answer",
             problem=problem,
             theorems=candidate_theorems,
         )
@@ -69,12 +72,90 @@ class ReasonerAgent(BaseAgent):
                 {"role": "user", "content": user_prompt},
             ]
         )
-        return response
+        logger.info(f"response: {response}")
+        return self._parse_response_list(response, candidate_theorems)
 
+    def _parse_string_list(self, response: str) -> List[str]:
+        """从 LLM 输出里提取 <search>...</search> 标签作为检索查询。"""
+        response = (response or "").strip()
+        if not response:
+            return []
+        pattern = re.compile(r"<search>(.*?)</search>", re.DOTALL | re.IGNORECASE)
+        matches = pattern.findall(response)
+        queries: List[str] = []
+        for raw in matches:
+            cleaned = raw.strip()
+            if cleaned:
+                queries.append(cleaned)
+        return queries
+
+    def _parse_response_list(
+        self,
+        response: str,
+        candidate_theorems: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        """解析 LLM 返回的定理列表
+
+        期望格式:
+        ```
+        <theorem>Finset.exists_subsuperset_card_eq</theorem>
+        <theorem>mem_convexHull_iff_exists_fintype</theorem>
+        <theorem>collinear_iff_not_affineIndependent_of_ne</theorem>
+        <theorem>collinear_iff_finrank_le_one</theorem>
+        ```
+        """
+        response = (response or "").strip()
+        if not response:
+            return []
+
+        pattern = re.compile(r"<theorem>(.*?)</theorem>", re.DOTALL | re.IGNORECASE)
+        raw_matches = pattern.findall(response)
+
+        selected: List[Dict[str, Any]] = []
+
+        for raw in raw_matches:
+            cleaned = raw.strip()
+            if not cleaned:
+                continue
+
+            # LLM 输出：可能是 "Finset.exists_subsuperset_card_eq" 或 "mem_convexHull_iff_exists_fintype"
+            parts = cleaned.split(".")
+            lemma_name = parts[-1]  # 只取最后一段作为真正的 lemma 名
+
+            match = None
+            for th in candidate_theorems:
+                th_name = th.get("name")
+                if th_name is None:
+                    continue
+
+                # th_name 可能是 ["Finset", "exists_subsuperset_card_eq"]，也可能是 "exists_subsuperset_card_eq"
+                if isinstance(th_name, list):
+                    th_full = ".".join(th_name)
+                    th_lemma = th_name[-1] if th_name else ""
+                else:
+                    th_full = str(th_name)
+                    th_lemma = th_full.split(".")[-1]
+
+                # 两种匹配策略：
+                # 1. 完整名一致（包括模块前缀）
+                # 2. lemma 名一致（只比最后一段）
+                if cleaned == th_full or lemma_name == th_lemma:
+                    match = th
+                    break
+
+            if match:
+                selected.append(match)
+
+        return selected
+
+    # ------------------------------------------------------------------
+    # sketch
+    # ------------------------------------------------------------------
     def generate_informal_proof(
         self,
         problem,
         relevant_theorems: List[Dict[str, Any]],
+        docstring: str,
     ) -> str:
         """生成非形式证明"""
         user_prompt = self.prompt_loader.load_and_format(
@@ -82,19 +163,31 @@ class ReasonerAgent(BaseAgent):
             "reasoner_generate_informal_proof",
             problem=problem,
             useful_theorems_section=relevant_theorems,
+            docstring=docstring,
         )
-        return self.llm.get_response(user_prompt)
+        informal_proof = self.llm.get_response(
+            [
+                {"role": "user", "content": user_prompt},
+            ]
+        )
+        return informal_proof
 
     def generate_sketch(self, problem: str, relevant_theorems: List[Dict[str, Any]], informal_proof: str) -> str:
         """生成证明带有step  sketch"""
         user_prompt = self.prompt_loader.load_and_format(
             "user",
-            "reasoner_create_lean_sketch",
+            "reasoner_generate_lean_sketch",
             problem=problem,
             useful_theorems_section=relevant_theorems,
             informal_proof=informal_proof,
-        )  # TODO lean hint
-        return self.llm.get_response(user_prompt)
+        )
+        response = self.llm.get_response(
+            [
+                {"role": "system", "content": "You are a Lean 4 expert who is trying to help write a proof in Lean 4."},
+                {"role": "user", "content": user_prompt},
+            ]
+        )
+        return response
 
     def refine_sketch_based_error(
         self,
@@ -242,20 +335,6 @@ class ReasonerAgent(BaseAgent):
         pattern = re.compile(r"```(?:lean4?)\s*\n(.*?)```", re.DOTALL | re.IGNORECASE)
         matches = pattern.findall(response)
         return matches
-
-    def _parse_string_list(self, response: str) -> List[str]:
-        """从 LLM 输出里提取 <search>...</search> 标签作为检索查询。"""
-        response = (response or "").strip()
-        if not response:
-            return []
-        pattern = re.compile(r"<search>(.*?)</search>", re.DOTALL | re.IGNORECASE)
-        matches = pattern.findall(response)
-        queries: List[str] = []
-        for raw in matches:
-            cleaned = raw.strip()
-            if cleaned:
-                queries.append(cleaned)
-        return queries
 
 
 class ReasonerAgent2(BaseAgent):

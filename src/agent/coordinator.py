@@ -1,4 +1,3 @@
-from curses import def_prog_mode
 import logging
 from typing import Any, Dict, List, Optional, Union
 
@@ -31,7 +30,7 @@ class HilbertCoordinator:
         reasoner: Optional[ReasonerAgent] = None,
         retriever: Optional[RetrieverAgent] = None,
         verification: Optional[VerificationAgent] = None,
-        prover: Optional[ProverAgent] = None,
+        # prover: Optional[ProverAgent] = None,
     ):
         self.reasoner = reasoner
         self.retriever = retriever
@@ -43,6 +42,7 @@ class HilbertCoordinator:
         self,
         problem: str,
         header: str,
+        docstring: str,
     ) -> str:
         """对一个问题进行求解，不管是难还是简单
 
@@ -51,32 +51,32 @@ class HilbertCoordinator:
             header (str): header就是前面的import前文
         """
         # TODO: 调用ProveAgent进行求解
+        # 2. 子问题拆分并且求解
+        subgoals = self.subgoal_decomposition(problem, header, docstring)
 
-    def subgoal_decomposition(self, problem: str, header: str, depth: int = 1):
+    def subgoal_decomposition(self, problem: str, header: str, docstring: str, depth: int = 1):
         """子问题拆分并且求解"""
         if depth >= self.max_depth:
             return None
-        for attempt in range(self.sketch_attempts):
+        for attempt in range(self.sketch_attemps):
             # 1. 检索相关mathlibs定理
-            relevant_theorems = self.retrieve_theores(problem)
+            relevant_theorems = self.retrieve_theorems(problem)
             # 2. 生成证明sketch
-            proof_sketch = self.generate_proof_sketch(problem, relevant_theorems)
+            proof_sketch = self.generate_proof_sketch(
+                problem,
+                relevant_theorems,
+                docstring,
+            )
             # 3. refine_and_validate_sketch
             sketch_assembled, subgoals, proved_subgoals = self.refine_and_validate_sketch(
                 proof_sketch, header, relevant_theorems, problem
             )
             # TODO sketch_assembled, subgoals, proved_subgoals ← REFINEANDVALIDATESKETCH(sketch, header, relevant_theorems) 进一步整理
-            if sketch_assembled is not None:
-    
-    def solve_all_subgoals(
-        self,
-        subgoals,
-        proved_subgoals,
-        sketch_assembled,
-        header,
-        depth
-    ):
-        
+
+    def solve_all_subgoals(self, subgoals, proved_subgoals, sketch_assembled, header, depth):
+        pass
+
+    # * 1. 检索相关mathlibs定理
     def retrieve_theorems(
         self,
         problem: str,
@@ -85,22 +85,30 @@ class HilbertCoordinator:
         """检索相关mathlibs定理"""
         # 1. 生成检索查询
         search_queries = self.reasoner.generate_search_queries(problem, error_message)
+        logger.info(f"Search queries: {search_queries}")
         # 2. 调用retriever检索相关mathlibs定理
         candidate_theorems = self.retriever.batch_retrieve(search_queries)
+        logger.info(f"Candidate theorems: {candidate_theorems}")
         # 3. 挑选相关定理, <theorem>...</theorem>
         relevant_theorems = self.reasoner.select_relevant_theorems(problem, candidate_theorems)
+        logger.info(f"relevant_theorems: {relevant_theorems}")
         return relevant_theorems
 
+    # * 2. 生成证明sketch
     def generate_proof_sketch(
         self,
         problem: str,
         relevant_theorems: List[Dict[str, Any]],
+        docstring: str,
     ) -> str:
         """生成证明sketch"""
-        informal_proof = self.reasoner.generate_informal_proof(problem, relevant_theorems)  # 自然语言
+        informal_proof = self.reasoner.generate_informal_proof(problem, relevant_theorems, docstring)  # 自然语言
+        logger.info(f"Informal proof: {informal_proof}")
         proof_sketch = self.reasoner.generate_sketch(problem, relevant_theorems, informal_proof)  # 证明sketch
+        logger.info(f"Proof sketch: {proof_sketch}")
         return proof_sketch
 
+    # * 3. 修复并验证sketch
     def refine_and_validate_sketch(
         self,
         sketch: str,
@@ -173,7 +181,7 @@ class HilbertCoordinator:
         header,
     ):
         for _ in range(self.sketch_attemps):
-            proof = self.prover.prove_subgoal(problelm)
+            proof = self.prover.prove_subgoal(probelm)
             verified, error_message = self.verification.execute(header + proof)
             if verified:
                 return proof

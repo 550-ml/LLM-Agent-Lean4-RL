@@ -11,9 +11,9 @@ prompt_loader:
 # LLM 配置
 llm:
   reasoner:
-    model_name: "gpt-4o-mini"  # 检索智能体使用的模型
-    temperature: 0.7
-    max_tokens: 2048
+    model_name: "gpt-5-mini"  # 检索智能体使用的模型
+    temperature: 1.0
+    max_tokens: 4500
     top_p: 1.0
     frequency_penalty: 0.0
     presence_penalty: 0.0
@@ -62,7 +62,7 @@ llm:
 agent:
   retriever:
     index_dir: "data/retriever"
-    model_name: "all-mpnet-base-v2"
+    model_name: "all-mpnet-base-v2"  # 自动使用本地缓存
 
 # 验证器配置
 verifier:
