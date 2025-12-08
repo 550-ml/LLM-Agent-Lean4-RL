@@ -7,7 +7,7 @@ Issues:
 {error_message}
 
 Lean Hints:
-{lean_hints}
+None
 
 Rules:
 1. Same proof level = same indentation: All tactics at the same logical level must use identical indentation

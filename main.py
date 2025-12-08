@@ -11,6 +11,7 @@ from typing import Dict, List, Optional
 from dotenv import load_dotenv
 
 from src.agent.coordinator import AgentCoordinator, HilbertCoordinator
+from src.agent.prover_agent import ProverAgent
 from src.agent.reasoner_agent import ReasonerAgent
 from src.agent.retriever_agent import RetrieverAgent
 from src.agent.verification_agent import VerificationAgent
@@ -124,13 +125,25 @@ def main():
     reasoner_llm = LLMFactory.create_from_dict(config_manager.get_llm_config("reasoner"))
     retriever = RetrieverAgent(**config_manager.get_retriever_config())
     reansoner = ReasonerAgent(reasoner_llm, prompt_loader=prompt_loader, retriever=retriever)
-
-    # 获取验证器配置
     verifier_config = config_manager.get_verifier_config()
     lean_runner = Lean4Runner(project_path=verifier_config.get("project_path", "data/benchmarks/lean4"))
     verification = VerificationAgent(lean_runner)
 
-    coordinator = HilbertCoordinator(reasoner=reansoner, retriever=retriever, verification=verification)
+    prover_config = config_manager.get_prover_config()
+    model_path = prover_config.get("model_path", "./Goedel-LM/Goedel-Prover-V2-32B")
+    device_id = prover_config.get("device_id", 0)
+    if device_id == -1:
+        device_map = {"": "cpu"}
+    else:
+        device_map = {"": device_id}
+    prover = ProverAgent(
+        model_path=model_path,
+        device_map=device_map,
+        max_new_tokens=prover_config.get("max_new_tokens", 1024),
+    )
+    logger.info("✅ ProverAgent initialized successfully")
+
+    coordinator = HilbertCoordinator(reasoner=reansoner, retriever=retriever, verification=verification, prover=prover)
 
     # 3. 处理每个文件
     for filename in lean_files:

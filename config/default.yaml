@@ -44,6 +44,13 @@ verifier:
   project_path: "/home/wangtuo/WorkSpace/lean/LLM-Agent-Lean4-RL/data/benchmarks/lean4"  # 这个地方给绝对路径
   timeout: 60
 
+# Prover 配置（本地 Goedel-LM 模型）
+prover:
+  enabled: true  # 是否启用 prover
+  model_path: "./Goedel-LM/Goedel-Prover-V2-32B"  # 模型路径
+  device_id: 0  # GPU 设备 ID，0 表示使用 GPU 0，-1 表示使用 CPU（会在代码中转换为 device_map）
+  max_new_tokens: 1024  # 最大生成 token 数
+
 # RL 配置（未来）
 rl:
   enabled: false

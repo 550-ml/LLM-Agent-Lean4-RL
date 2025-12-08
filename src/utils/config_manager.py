@@ -89,6 +89,10 @@ class ConfigManager:
         """获取验证器配置"""
         return self.config.get("verifier", {})
 
+    def get_prover_config(self) -> Dict[str, Any]:
+        """获取 Prover 配置"""
+        return self.config.get("prover", {})
+
     def get_project_dir(self) -> str:
         """获取基准数据目录"""
         return self.get_data_config().get("project_dir", "data/benchmarks/lean4")
