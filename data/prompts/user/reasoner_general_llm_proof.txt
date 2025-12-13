@@ -1,0 +1,22 @@
+Think step-by-step to complete the following Lean 4 proof.
+
+{problem}
+
+Lean Hints:
+{lean_hints}
+
+Tactic Hints:
+{tactic_hints}
+
+Rules:
+1. Same proof level = same indentation: All tactics at the same logical level must use identical indentation
+2. Consistent characters: Use either tabs OR spaces consistently (don't mix)
+3. Proper nesting: Indent sub-proofs one level deeper than their parent
+4. Do NOT include any imports or open statements.
+5. Use proper Lean 4 syntax and conventions. Ensure the proof sketch is enclosed in triple backticks ```lean```.
+6. Only include a single Lean 4 code block, corresponding to the proof along with the theorem statement.
+7. When dealing with large numerical quantities, avoid explicit computation as much as possible. Use tactics like `rw` to perform symbolic manipulation rather than numerical computation.
+8. Do NOT use sorry.
+9. Do NOT change anything in the original theorem statement.
+
+{relevant_theorems}

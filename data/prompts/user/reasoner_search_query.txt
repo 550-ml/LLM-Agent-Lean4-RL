@@ -24,6 +24,9 @@ Guidelines:
 Problem to Solve:
 {problem}
 
+Informal description:
+{docstring}
+
 Error Context (if any):
 {error_message}
 

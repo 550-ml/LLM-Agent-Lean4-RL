@@ -1,0 +1,17 @@
+The following Lean 4 code has compilation errors. Please fix the errors while maintaining the mathematical meaning.
+
+proof
+{proof}
+
+error_message:
+{error_message}
+
+Instructions:
+1. Analyze what the theorem is trying to prove. Then, analyze why the error is happening, step by step. Briefly explain your reasoning.
+2. Provide a corrected version of the Lean 4 code that addresses these errors.
+3. Only include the proof code block, and nothing else.
+4. Do not use "sorry".
+5. Do not include any imports or open statements.
+6. Do not change the original theorem statement.
+
+{augmented_theorems}

@@ -10,7 +10,7 @@ from typing import Dict, List, Optional
 
 from dotenv import load_dotenv
 
-from src.agent.coordinator import AgentCoordinator, HilbertCoordinator
+from src.agent.coordinator import HilbertCoordinator
 from src.agent.prover_agent import ProverAgent
 from src.agent.reasoner_agent import ReasonerAgent
 from src.agent.retriever_agent import RetrieverAgent
@@ -24,58 +24,6 @@ from src.verifier.lean4_runner import Lean4Runner
 # 添加项目根目录到路径
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 load_dotenv("config/api_key.env")
-
-
-def main_workflow_putnam(
-    problem_description: str,
-    task_template: str,
-    config_manager: Optional[ConfigManager] = None,
-    config: Optional[Dict] = None,
-) -> Dict[str, str]:
-    """
-    主工作流程（Putnam 格式）
-
-    Args:
-        problem_description: 问题描述
-        task_template: 任务模板
-        config_manager: ConfigManager 实例（如果为 None，会使用默认配置）
-        config: 可选的配置字典，用于覆盖配置
-
-    Returns:
-        Dict[str, str]: 包含 "code" 和 "proof" 的字典
-    """
-    # 创建协调器（统一使用 ConfigManager）
-    coordinator = AgentCoordinator.from_config(config_manager=config_manager, config=config)
-
-    result = coordinator.solve(problem_description, task_template)
-
-    return result
-
-
-def process_single_file(
-    filename: str,
-    loader: PutnamLoader,
-    config_manager: ConfigManager,
-):
-    """处理单个文件
-
-    Args:
-        filename (str): 文件名
-        loader (PutnamLoader): PutnamLoader 实例
-        config_manager (ConfigManager): ConfigManager 实例
-    """
-    # 1. 题目加载
-    problem = loader.load_file(filename)
-    problem_description, task_template = loader.convert_to_task_format(problem)
-    logger.info(f"Problem Description: {problem_description}")
-    logger.info(f"Task Template: {task_template}")
-    # 2. Agent流程, 这里可以自定义
-    try:
-        result = main_workflow_putnam(problem_description, task_template, config_manager=config_manager)
-    except Exception as e:
-        logger.error(f"处理失败: {e}")
-        return None
-    return result
 
 
 def get_files_from_dir(

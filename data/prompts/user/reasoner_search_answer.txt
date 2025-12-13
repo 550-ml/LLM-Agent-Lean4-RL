@@ -2,6 +2,10 @@ You are helping to solve a Lean theorem proving problem using the mathlib librar
 
 The problem is: 
 {problem}  
+
+Informal description:
+{docstring}
+
 Here are some potentially relevant theorems and definitions: 
 {theorems}  
 

@@ -1,0 +1,42 @@
+You are a Lean 4 expert. Your task is to compress and optimize a proof sketch by removing redundancy while maintaining correctness.
+
+Problem Statement:
+{problem}
+
+Original Sketch:
+{sketch}
+
+Instructions:
+1. Remove redundant `have` statements:
+   - If a `have` statement only restates an existing hypothesis or earlier `have`, remove it.
+2. Carefully merge subgoals:
+   - Only merge subgoals if the resulting statement is still atomic and will be used as a single unit in the final proof.
+   - Do NOT merge subgoals that are used separately in the final `use` / `constructor` assembly.
+3. Simplify trivial steps:
+   - Remove intermediate steps that are purely cosmetic (e.g., unnecessary casts or aliasing `have`s).
+4. Keep essential structure:
+   - Maintain the logical flow and all necessary subgoals required to assemble the final proof.
+5. Preserve correctness:
+   - The refactored sketch must remain mathematically correct and structurally sufficient to prove the theorem.
+
+STRICT RULES (must follow):
+- Do NOT change the theorem statement in any way.
+- Do NOT add or remove quantifiers in the theorem statement.
+- Do NOT introduce new lemmas or definitions outside the proof.
+- Every `have` statement MUST be written in the form:
+  `have <name> : <proposition> := by sorry`
+- Do NOT use any tactics other than `sorry` inside `have` proofs.
+- Do NOT use `sorry` in the main proof.
+- Do NOT nest `have` statements inside other `have` proofs.
+- One line = one `have` statement.
+- Do NOT merge multiple logically independent facts into a single `have`.
+
+Optimization Guidelines:
+- Remove `have` statements that only rename or re-cast existing hypotheses.
+- Prefer direct `let` bindings for witnesses over existential unpacking when it simplifies the structure.
+- Keep the minimal set of `have` statements needed for the final assembly.
+
+Output Requirements:
+- Return exactly one Lean 4 code block enclosed in ```lean```.
+- The compressed sketch must be shorter or equal in length to the original.
+- Maintain valid Lean 4 syntax and consistent indentation.

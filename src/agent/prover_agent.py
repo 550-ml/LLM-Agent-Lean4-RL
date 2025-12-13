@@ -66,13 +66,20 @@ class ProverAgent:
         full_code = header + "\n" + subgoal if header else subgoal
 
         # 构建 prompt
-        prompt = f"""Complete the following Lean 4 code:
+        prompt = f"""
+You are a Lean 4 prover.
+Complete the following Lean 4 code so that it compiles.
 
-```lean4
-{full_code}```
+Rules:
+1. Output ONLY a single Lean code block (```lean ... ```).
+2. Do NOT include any explanation, proof plan, or comments.
+3. Do NOT include imports or open statements unless they already appear in the given code.
+4. Do NOT use `sorry`.
+5. Do NOT change the theorem/lemma statement (name, arguments, types, statement). Only fill in the proof.
+6. Keep the result self-contained and compilable.
 
-Before producing the Lean 4 code to formally prove the given theorem, provide a detailed proof plan outlining the main proof steps and strategies.
-The plan should highlight key ideas, intermediate lemmas, and proof structures that will guide the construction of the final formal proof.
+```lean
+{full_code}
 """.strip()
 
         chat = [{"role": "user", "content": prompt}]
@@ -98,7 +105,7 @@ The plan should highlight key ideas, intermediate lemmas, and proof structures t
             generated_text = self._tokenizer.batch_decode(outputs, skip_special_tokens=True)[0]
 
             logger.debug(f"Prover generation time: {time.time() - start_time:.2f}s")
-
+            logger.info(f"prover Generated text: {generated_text}")
             # 提取 Lean 代码块（如果有）
             pattern = re.compile(r"```(?:lean4?)\s*\n(.*?)```", re.DOTALL | re.IGNORECASE)
             matches = pattern.findall(generated_text)

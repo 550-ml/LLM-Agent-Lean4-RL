@@ -21,12 +21,109 @@ class ReasonerAgent(BaseAgent):
         super().__init__(llm, "ReasonerAgent")
         self.prompt_loader = prompt_loader
 
+    def _normalize_lean_code(self, code: str) -> str:
+        """规范化 Lean 代码：移除 import/open 语句和包装文本
+
+        Args:
+            code: 原始 Lean 代码
+
+        Returns:
+            str: 规范化后的 Lean 代码
+        """
+        if not code:
+            return ""
+
+        lines = code.splitlines()
+        cleaned_lines = []
+        in_outer_namespace = False
+        namespace_depth = 0
+
+        for line in lines:
+            stripped = line.strip()
+
+            # 移除 import 语句（所有位置的 import）
+            if stripped.startswith("import "):
+                continue
+
+            # 移除 open 语句（所有位置的 open）
+            if stripped.startswith("open "):
+                continue
+
+            # 处理 namespace：只移除最外层的 namespace ... end 包装
+            if stripped.startswith("namespace "):
+                if namespace_depth == 0:
+                    # 最外层的 namespace，标记并跳过
+                    in_outer_namespace = True
+                    namespace_depth += 1
+                    continue
+                else:
+                    # 嵌套的 namespace，保留
+                    namespace_depth += 1
+                    cleaned_lines.append(line)
+                    continue
+
+            if stripped == "end":
+                if in_outer_namespace and namespace_depth == 1:
+                    # 最外层的 end，移除
+                    in_outer_namespace = False
+                    namespace_depth = 0
+                    continue
+                elif namespace_depth > 1:
+                    # 嵌套的 end，保留
+                    namespace_depth -= 1
+                    cleaned_lines.append(line)
+                    continue
+                # 其他情况（不在 namespace 中的 end）保留
+
+            # 保留所有其他行
+            cleaned_lines.append(line)
+
+        # 重新组合，去除首尾空行
+        result = "\n".join(cleaned_lines).strip()
+
+        # 确保以换行符结尾（如果代码不为空）
+        if result:
+            result = result.rstrip() + "\n"
+
+        return result
+
+    def _extract_lean_code(self, response: str) -> str:
+        """统一提取 Lean 代码的辅助方法
+
+        先尝试用正则匹配代码块，如果失败则用 replace 清理
+        然后进行 normalize：移除 import/open 和包装文本
+
+        Args:
+            response: LLM 的响应文本
+
+        Returns:
+            str: 提取并规范化后的 Lean 代码
+        """
+        if not response:
+            return ""
+
+        # 1. 先用正则匹配 ```lean 或 ```lean4 代码块
+        pattern = re.compile(r"```(?:lean4?)\s*\n(.*?)```", re.DOTALL | re.IGNORECASE)
+        matches = pattern.findall(response)
+        if matches:
+            code = matches[0]
+        else:
+            # 2. 如果正则匹配失败，用 replace 方法清理
+            code = response.replace("```lean4", "").replace("```lean", "")
+            code = code.replace("```", "")
+            code = code.replace("```", "")
+            code = code.strip()
+
+        # 3. 规范化代码：移除 import/open 和包装文本
+        return self._normalize_lean_code(code)
+
     # ------------------------------------------------------------------
     # Theorem Retrieval
     # ------------------------------------------------------------------
     def generate_search_queries(
         self,
         problem: str,
+        docstring: str,
         error_message: Optional[str] = None,
     ):
         """生成检索定理相关的检索query
@@ -42,6 +139,7 @@ class ReasonerAgent(BaseAgent):
             "user",
             "reasoner_search_query",
             problem=problem,
+            docstring=docstring,
             error_message=error_message,
         )
         response = self.llm.get_response(
@@ -55,6 +153,7 @@ class ReasonerAgent(BaseAgent):
     def select_relevant_theorems(
         self,
         problem,
+        docstring,
         candidate_theorems: List[Dict[str, Any]],
     ) -> List[Dict[str, Any]]:
         """挑选相关定理"""
@@ -62,6 +161,7 @@ class ReasonerAgent(BaseAgent):
             "user",
             "reasoner_search_answer",
             problem=problem,
+            docstring=docstring,
             theorems=candidate_theorems,
         )
         response = self.llm.get_response(
@@ -180,15 +280,10 @@ class ReasonerAgent(BaseAgent):
         )
         response = self.llm.get_response(
             [
-                {"role": "system", "content": "You are a Lean 4 expert who is trying to help write a proof in Lean 4."},
                 {"role": "user", "content": user_prompt},
             ]
         )
-        # 去掉response中的```lean4```和```lean```
-        response = response.replace("```lean4", "").replace("```lean", "")
-        response = response.replace("```", "")
-        response = response.replace("```", "")
-        return response
+        return self._extract_lean_code(response)
 
     def correct_sketch_error(
         self,
@@ -210,6 +305,22 @@ class ReasonerAgent(BaseAgent):
         )
         response = self.llm.get_response([{"role": "user", "content": user_prompt}])
         return extract_lean_code(response)
+
+    def compress_sketch(
+        self,
+        sketch: str,
+        problem: str,
+        docstring: str,
+    ) -> str:
+        """压缩和优化 sketch，移除冗余的 have 语句"""
+        user_prompt = self.prompt_loader.load_and_format(
+            "user",
+            "reasoner_compress_sketch",
+            sketch=sketch,
+            problem=problem,
+        )
+        response = self.llm.get_response([{"role": "user", "content": user_prompt}])
+        return self._extract_lean_code(response)
 
     # ------------------------------------------------------------------
     # extract subgoals
@@ -266,9 +377,7 @@ class ReasonerAgent(BaseAgent):
             subgoal=subgoal,
         )
         response = self.llm.get_response([{"role": "user", "content": user_prompt}])
-        pattern = re.compile(r"```(?:lean4?)\s*\n(.*?)```", re.DOTALL | re.IGNORECASE)
-        matches = pattern.findall(response)
-        return matches[0]
+        return self._extract_lean_code(response)
 
     # ------------------------------------------------------------------
     # use sketch and theorems assemble
@@ -285,7 +394,7 @@ class ReasonerAgent(BaseAgent):
             all_theorems=all_theorems,
         )
         response = self.llm.get_response([{"role": "user", "content": user_prompt}])
-        return response
+        return self._extract_lean_code(response)
         # pattern = re.compile(r"```(?:lean4?)\s*\n(.*?)```", re.DOTALL | re.IGNORECASE)
         # matches = pattern.findall(response)
         # return matches[0]
@@ -303,10 +412,7 @@ class ReasonerAgent(BaseAgent):
         )
         response = self.llm.get_response([{"role": "user", "content": user_prompt}])
         logger.info(f"assembly correction response: {response}")
-        response = response.replace("```lean4", "").replace("```lean", "")
-        response = response.replace("```", "")
-        response = response.replace("```", "")
-        return response
+        return self._extract_lean_code(response)
 
     # ------------------------------------------------------------------
     # subgoal
@@ -317,7 +423,7 @@ class ReasonerAgent(BaseAgent):
     ):
         user_prompt = self.prompt_loader.load_and_format(
             "user",
-            "reasoner_check_mathematic_correctness",
+            "reasoner_check_mathematical_correctness",  #
             problem=subgoal,
         )
         response = self.llm.get_response([{"role": "user", "content": user_prompt}])
@@ -360,8 +466,10 @@ class ReasonerAgent(BaseAgent):
             sketch=sketch,
             error_message=error_justification,
         )
-        return self.llm.get_response([{"role": "user", "content": user_prompt}])
+        response = self.llm.get_response([{"role": "user", "content": user_prompt}])
+        return self._extract_lean_code(response)
 
+    # 直接用通用llm解决问题
     def attemp_reasoner_proof(
         self,
         subgoal,
@@ -369,39 +477,141 @@ class ReasonerAgent(BaseAgent):
     ):
         user_prompt = self.prompt_loader.load_and_format(
             "user",
-            "reasoner_attemp_reasoner_proof",
-            subgoal=subgoal,
+            "reasoner_general_llm_proof",
+            problem=subgoal,  # prompt 中使用的是 problem
+            lean_hints="",  # 暂时为空
+            tactic_hints="",  # 暂时为空
             relevant_theorems=relevant_theorems,
         )
-        return self.llm.get_response([{"role": "user", "content": user_prompt}])
+        response = self.llm.get_response([{"role": "user", "content": user_prompt}])
+        return self._extract_lean_code(response)
+
+    def correct_proof_error(
+        self,
+        proof,
+        error_message,
+        augmented_theorems,
+    ):
+        user_prompt = self.prompt_loader.load_and_format(
+            "user",
+            "reasoner_correct_proof_error",
+            proof=proof,
+            error_message=error_message,
+            augmented_theorems=augmented_theorems,
+        )
+        response = self.llm.get_response([{"role": "user", "content": user_prompt}])
+        return self._extract_lean_code(response)
+
+
+def _normalize_lean_code(code: str) -> str:
+    """规范化 Lean 代码：移除 import/open 语句和包装文本（模块级函数）
+
+    Args:
+        code: 原始 Lean 代码
+
+    Returns:
+        str: 规范化后的 Lean 代码
+    """
+    if not code:
+        return ""
+
+    lines = code.splitlines()
+    cleaned_lines = []
+    in_outer_namespace = False
+    namespace_depth = 0
+
+    for line in lines:
+        stripped = line.strip()
+
+        # 移除 import 语句（所有位置的 import）
+        if stripped.startswith("import "):
+            continue
+
+        # 移除 open 语句（所有位置的 open）
+        if stripped.startswith("open "):
+            continue
+
+        # 处理 namespace：只移除最外层的 namespace ... end 包装
+        if stripped.startswith("namespace "):
+            if namespace_depth == 0:
+                # 最外层的 namespace，标记并跳过
+                in_outer_namespace = True
+                namespace_depth += 1
+                continue
+            else:
+                # 嵌套的 namespace，保留
+                namespace_depth += 1
+                cleaned_lines.append(line)
+                continue
+
+        if stripped == "end":
+            if in_outer_namespace and namespace_depth == 1:
+                # 最外层的 end，移除
+                in_outer_namespace = False
+                namespace_depth = 0
+                continue
+            elif namespace_depth > 1:
+                # 嵌套的 end，保留
+                namespace_depth -= 1
+                cleaned_lines.append(line)
+                continue
+            # 其他情况（不在 namespace 中的 end）保留
+
+        # 保留所有其他行
+        cleaned_lines.append(line)
+
+    # 重新组合，去除首尾空行
+    result = "\n".join(cleaned_lines).strip()
+
+    # 确保以换行符结尾（如果代码不为空）
+    if result:
+        result = result.rstrip() + "\n"
+
+    return result
 
 
 def extract_lean_code(raw: str) -> str:
-    lines = raw.splitlines()
-    start_idx = 0
+    """提取 Lean 代码（用于需要查找 theorem/lemma 等关键字的场景）
 
-    # 1. 找到第一行 Lean 代码的起点
-    for i, line in enumerate(lines):
-        s = line.lstrip()
-        if (
-            s.startswith("theorem ")
-            or s.startswith("lemma ")
-            or s.startswith("def ")
-            or s.startswith("namespace ")
-            or s.startswith("structure ")
-        ):
-            start_idx = i
-            break
+    先尝试用正则匹配代码块，如果失败则查找第一个 Lean 关键字并清理
+    然后进行 normalize：移除 import/open 和包装文本
+    """
+    if not raw:
+        return ""
 
-    code_lines = lines[start_idx:]
+    # 1. 先用正则匹配 ```lean 或 ```lean4 代码块
+    pattern = re.compile(r"```(?:lean4?)\s*\n(.*?)```", re.DOTALL | re.IGNORECASE)
+    matches = pattern.findall(raw)
+    if matches:
+        code = matches[0]
+    else:
+        # 2. 如果正则匹配失败，查找第一个 Lean 关键字
+        lines = raw.splitlines()
+        start_idx = 0
 
-    # 2. 去掉可能出现的 ```lean / ``` 这类 fence
-    cleaned = []
-    for line in code_lines:
-        s = line.strip()
-        if s.startswith("```"):
-            continue
-        cleaned.append(line)
+        for i, line in enumerate(lines):
+            s = line.lstrip()
+            if (
+                s.startswith("theorem ")
+                or s.startswith("lemma ")
+                or s.startswith("def ")
+                or s.startswith("namespace ")
+                or s.startswith("structure ")
+            ):
+                start_idx = i
+                break
 
-    # 3. 去掉末尾多余空行
-    return "\n".join(cleaned).rstrip() + "\n"
+        code_lines = lines[start_idx:]
+
+        # 3. 去掉可能出现的 ```lean / ``` 这类 fence
+        cleaned = []
+        for line in code_lines:
+            s = line.strip()
+            if s.startswith("```"):
+                continue
+            cleaned.append(line)
+
+        code = "\n".join(cleaned)
+
+    # 4. 规范化代码：移除 import/open 和包装文本
+    return _normalize_lean_code(code)
